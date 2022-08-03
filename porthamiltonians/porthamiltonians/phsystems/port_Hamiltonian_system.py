@@ -104,8 +104,8 @@ class PortHamiltonianSystem():
     def seed(self, seed):
         self.rng = np.random.default_rng(seed)
 
-    def time_derivative(self, integrator, *args):
-        return time_derivative(integrator, self.x_dot, *args)
+    def time_derivative(self, integrator, *args, **kwargs):
+        return time_derivative(integrator, self.x_dot, *args, **kwargs)
 
     def x_dot(self, x, t, u=None):
         S = self.S(x)
@@ -150,6 +150,9 @@ class PortHamiltonianSystem():
         dxdt += self.rng.normal(size=dxdt.shape)*noise_std
 
         return x, dxdt, t, us
+
+    def set_controller(self, controller):
+        self.controller = controller
 
     def _dH(self, x):
         x = torch.tensor(x, requires_grad=True)

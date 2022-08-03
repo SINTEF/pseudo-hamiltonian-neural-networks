@@ -56,8 +56,8 @@ class DynamicSystemNN(torch.nn.Module):
     def seed(self, seed):
         torch.manual_seed(seed)
 
-    def time_derivative(self, integrator, *args):
-        return time_derivative(integrator, self.rhs_model, *args)
+    def time_derivative(self, integrator, *args, **kwargs):
+        return time_derivative(integrator, self.rhs_model, *args, **kwargs)
 
     def simulate_trajectory(self, integrator, t_sample, x0=None, noise_std=0, reference=None):
         if x0 is None:
@@ -146,6 +146,9 @@ class DynamicSystemNN(torch.nn.Module):
             t_sample = t_sample.reshape(ntrajectories, nsteps, 1)
 
         return xs, t_sample, us
+
+    def set_controller(self, controller):
+        self.controller = controller
 
     def _initial_condition_sampler(self, nsamples=1):
         return 2*torch.rand((nsamples, self.nstates), dtype=self.ttype) - 1
