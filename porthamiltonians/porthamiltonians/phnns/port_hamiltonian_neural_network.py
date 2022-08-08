@@ -3,6 +3,7 @@ import torch
 
 from .dynamic_system_neural_network import DynamicSystemNN
 from .models import HamiltonianNN, ExternalPortNN, R_NN, R_estimator
+from ..utils.utils import to_tensor
 
 
 class PortHamiltonianNN(DynamicSystemNN):
@@ -125,7 +126,7 @@ class PortHamiltonianNN(DynamicSystemNN):
         self.rhs_model = self._x_dot
 
     def _structure_matrix(self, x):
-        return torch.tensor(self.structure_matrix, dtype=self.ttype)
+        return to_tensor(self.structure_matrix, self.ttype)
     
     def _hamiltonian_true(self, x):
         return self.hamiltonian_true(x).detach()
@@ -140,7 +141,7 @@ class PortHamiltonianNN(DynamicSystemNN):
         return self.dissipation_true(x).detach()
 
     def _dissipation_true_static(self, x):
-        return torch.tensor(self.dissipation_true, dtype=self.ttype)
+        return to_tensor(self.dissipation_true, self.ttype)
 
     def _dH_hamiltonian_est(self, x):
         x = x.detach().requires_grad_()
@@ -151,6 +152,10 @@ class PortHamiltonianNN(DynamicSystemNN):
         return torch.autograd.grad(self.hamiltonian(x).sum(), x, retain_graph=False, create_graph=False)[0].detach()
 
     def _x_dot(self, x, t, u=None):
+        x = to_tensor(x, self.ttype)
+        t = to_tensor(t, self.ttype)
+        u = to_tensor(u, self.ttype)
+
         S = self.S(x)
         R = self.R(x)
         dH = self.dH(x)

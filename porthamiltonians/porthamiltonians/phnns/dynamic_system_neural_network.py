@@ -4,6 +4,7 @@ from scipy.integrate import solve_ivp
 import torch
 
 from ..utils.derivatives import time_derivative
+from ..utils.utils import to_tensor
 
 
 class DynamicSystemNN(torch.nn.Module):
@@ -60,6 +61,7 @@ class DynamicSystemNN(torch.nn.Module):
         return time_derivative(integrator, self.rhs_model, *args, **kwargs)
 
     def simulate_trajectory(self, integrator, t_sample, x0=None, noise_std=0, reference=None):
+        x0 = to_tensor(x0)
         if x0 is None:
             x0 = self._initial_condition_sampler(1)
 
@@ -72,6 +74,7 @@ class DynamicSystemNN(torch.nn.Module):
             xs = out_ivp['y'].T
             us = None
         else:
+            t_sample = to_tensor(t_sample, self.ttype)
             if not integrator and self.controller is not None:
                 integrator = 'rk4'
                 print('Warning: Since the system contains a controller, the RK4 integrator is used to simulate the trajectory instead of solve_ivp')
@@ -90,7 +93,7 @@ class DynamicSystemNN(torch.nn.Module):
             for i, t_step in enumerate(t_sample[:-1]):
                 t_step = torch.squeeze(t_step).reshape(-1, 1)
                 if self.controller is not None:
-                    u = torch.tensor(self.controller(xs[i, :], t_step), dtype=self.ttype)
+                    u = to_tensor(self.controller(xs[i, :], t_step), self.ttype)
                     us[i, :] = u
                 dt = t_sample[i + 1] - t_step
                 xs[i + 1, :] = xs[i, :] + dt*self.time_derivative(integrator, xs[i:i+1, :], xs[i:i+1, :],
@@ -107,15 +110,16 @@ class DynamicSystemNN(torch.nn.Module):
         if integrator in ('euler', 'rk4') and self.controller is None:
             if x0 is None:
                 x0 = self._initial_condition_sampler(ntrajectories, self.rng)
+            x0 = to_tensor(x0, self.ttype)
+            t_sample = to_tensor(t_sample, self.ttype)
 
             if len(t_sample.shape) == 1:
                 t_sample = np.tile(t_sample, (ntrajectories, 1))
 
             dt = t_sample[0, 1] - t_sample[0, 0]
             nsteps = t_sample.shape[-1]
-            x0 = torch.tensor(x0.reshape(ntrajectories, self.nstates), dtype=self.ttype)
-            t_sample = torch.tensor(t_sample.reshape(ntrajectories, nsteps, 1), dtype=self.ttype)
-            dt = torch.tensor(dt, dtype=self.ttype)
+            x0 = x0.reshape(ntrajectories, self.nstates)
+            t_sample = t_sample.reshape(ntrajectories, nsteps, 1)
             xs = torch.zeros([ntrajectories, nsteps, self.nstates])
             xs[:, 0, :] = x0
             for i in range(nsteps - 1):
@@ -130,19 +134,20 @@ class DynamicSystemNN(torch.nn.Module):
             else:
                 assert t_sample.shape[0] == ntrajectories
             nsteps = t_sample.shape[-1]
-            xs = np.zeros([ntrajectories, nsteps, self.nstates])
-            us = np.zeros((ntrajectories, nsteps - 1, self.nstates))
+            xs = torch.zeros([ntrajectories, nsteps, self.nstates])
+            us = torch.zeros((ntrajectories, nsteps - 1, self.nstates))
             if references is None:
                 references = [None] * ntrajectories
 
             for i in range(ntrajectories):
-                xs[i], us[i] = self.simulate_trajectory(integrator=integrator, t_sample=t_sample[i], x0=x0[i], noise_std=noise_std, reference=references[i])
+                xs[i], us[i] = self.simulate_trajectory(integrator=integrator, t_sample=t_sample[i],
+                                                        x0=x0[i], noise_std=noise_std, reference=references[i])
 
             if self.controller is None:
                 us = None
 
             if len(t_sample.shape) == 1:
-                t_sample = np.tile(t_sample, (ntrajectories, 1))
+                t_sample = torch.tile(t_sample, (ntrajectories, 1))
             t_sample = t_sample.reshape(ntrajectories, nsteps, 1)
 
         return xs, t_sample, us

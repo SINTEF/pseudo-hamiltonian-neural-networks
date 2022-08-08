@@ -64,7 +64,7 @@ if __name__ == "__main__":
         for i in range(nrollouts):
             x_exact, dxdt, _, _ = pH_system.sample_trajectory(t_sample)
             x0 = x_exact[0, :]
-            x_phnn, _ = model.simulate_trajectory(False, t_sample, x0=torch.tensor(x0))
+            x_phnn, _ = model.simulate_trajectory(False, t_sample, x0=x0)
 
             if isinstance(model, PortHamiltonianNN):
                 if (not model.external_port_provided):
