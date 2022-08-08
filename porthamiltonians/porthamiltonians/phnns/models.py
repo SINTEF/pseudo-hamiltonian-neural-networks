@@ -173,6 +173,9 @@ class R_estimator(torch.nn.Module):
     def forward(self, x):
         return torch.diag(torch.abs(self.pick_rs)@(self.rs))
 
+    def get_parameters(self):
+        return self.rs.detach().numpy()
+
 
 def load_baseline_model(modelpath):
 
