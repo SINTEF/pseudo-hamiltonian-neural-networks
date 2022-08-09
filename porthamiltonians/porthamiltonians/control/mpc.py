@@ -72,7 +72,7 @@ class PortHamiltonianMPC(PortHamiltonianController):
                 self.dH = dH
 
             if F is None:
-                self.F = lambda x: np.zeros_like(x)  # TODO:
+                self.F = lambda x: np.zeros_like(x)
             else:
                 self.F = F
 
