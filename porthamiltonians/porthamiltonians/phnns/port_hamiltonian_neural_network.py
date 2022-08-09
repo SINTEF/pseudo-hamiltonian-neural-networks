@@ -123,7 +123,6 @@ class PortHamiltonianNN(DynamicSystemNN):
             self.external_port_provided = True
         else:
             self.external_port = external_port_est
-        self.rhs_model = self._x_dot
 
     def _structure_matrix(self, x):
         return to_tensor(self.structure_matrix, self.ttype)

@@ -50,9 +50,10 @@ class DynamicSystemNN(torch.nn.Module):
         self.ttype = ttype
         self.nstates = nstates
         self.controller = controller
-        self.rhs_model = rhs_model
+        self.model = rhs_model
         if init_sampler is not None:
             self._initial_condition_sampler = init_sampler
+        self.rhs_model = self._x_dot
 
     def seed(self, seed):
         torch.manual_seed(seed)
@@ -154,6 +155,16 @@ class DynamicSystemNN(torch.nn.Module):
 
     def set_controller(self, controller):
         self.controller = controller
+
+    def _x_dot(self, x, t, u=None):
+        x = to_tensor(x, self.ttype)
+        t = to_tensor(t, self.ttype)
+        u = to_tensor(u, self.ttype)
+
+        dynamics = self.model(x, t)
+        if u is not None:
+            dynamics += u
+        return dynamics
 
     def _initial_condition_sampler(self, nsamples=1):
         return 2*torch.rand((nsamples, self.nstates), dtype=self.ttype) - 1
