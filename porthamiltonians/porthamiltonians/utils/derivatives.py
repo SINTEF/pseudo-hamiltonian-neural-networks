@@ -19,7 +19,7 @@ def time_derivative(integrator, x_dot, x_start, x_end, t_start, t_end, dt, u=Non
 
 
 def time_derivative_continuous(x_dot, x, t=None):
-    return x_dot(x=x, t=t)
+    return x_dot(x, t)
 
 
 def discrete_time_derivative_rk4(x_dot, x1, t1, dt, u):

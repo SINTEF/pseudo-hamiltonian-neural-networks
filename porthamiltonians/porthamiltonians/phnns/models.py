@@ -37,14 +37,14 @@ class BaseNN(torch.nn.Module):
         else:
             self.forward = self._forward_with_state_and_time
 
-    def _forward_with_state_and_time(self, *args):
-        return self.model(torch.cat(args, dim=-1))
+    def _forward_with_state_and_time(self, x=None, t=None):
+        return self.model(torch.cat([x, t], dim=-1))
 
-    def _forward_without_time(self, *args):
-        return self.model(args[0])
+    def _forward_without_time(self, x=None, t=None):
+        return self.model(x)
 
-    def _forward_without_state(self, *args):
-        return self.model(args[1])
+    def _forward_without_state(self, x=None, t=None):
+        return self.model(t)
 
 
 class BaselineNN(BaseNN):
@@ -70,14 +70,14 @@ class ExternalPortNN(BaseNN):
 
         self.external_port_filter = self.format_external_port_filter(external_port_filter)
 
-    def _forward_with_state_and_time(self, *args):
-        return self.model(torch.cat(args, dim=-1))@self.external_port_filter
+    def _forward_with_state_and_time(self, x=None, t=None):
+        return self.model(torch.cat([x, t], dim=-1))@self.external_port_filter
 
-    def _forward_without_time(self, *args):
-        return self.model(args[0])@self.external_port_filter
+    def _forward_without_time(self, x=None, t=None):
+        return self.model(x)@self.external_port_filter
 
-    def _forward_without_state(self, *args):
-        return self.model(args[1])@self.external_port_filter
+    def _forward_without_state(self, x=None, t=None):
+        return self.model(t)@self.external_port_filter
 
     def format_external_port_filter(self, external_port_filter):
         if external_port_filter is None:
