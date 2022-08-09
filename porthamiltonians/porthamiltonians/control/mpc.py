@@ -92,6 +92,7 @@ class PortHamiltonianMPC(PortHamiltonianController):
         self.tvp_callback = tvp_callback
         self._p_template = None
         self._tvp_template = None
+        self._use_time_variable = False
 
         self.model_callback = model_callback
 
@@ -136,7 +137,8 @@ class PortHamiltonianMPC(PortHamiltonianController):
                     nn_H = CasadiFCNN(layers=get_pytorch_model_architecture(self.H))
                     dH = casadi.gradient(nn_H.create_forward(model.x.cat), model.x.cat)
 
-                    model._p.append(casadi.tools.entry('H_params', sym=nn_H.params))
+                    model._p["name"].append("H_params")
+                    model._p["var"].append(nn_H.params)
 
                     self.dynamics_params['H'] = pytorch_parameter_getter(self.H)
                 else:
@@ -146,7 +148,8 @@ class PortHamiltonianMPC(PortHamiltonianController):
                     nn_dH = CasadiFCNN(layers=get_pytorch_model_architecture(self.dH))
                     dH = nn_dH.create_forward(model.x.cat)
 
-                    model._p.append(casadi.tools.entry('H_params', sym=nn_dH.params))
+                    model._p["name"].append("H_params")
+                    model._p["var"].append(nn_dH.params)
 
                     self.dynamics_params['H'] = pytorch_parameter_getter(self.dH)
                 else:
@@ -154,9 +157,17 @@ class PortHamiltonianMPC(PortHamiltonianController):
 
             if isinstance(self.F, torch.nn.Module):
                 nn_F = CasadiFCNN(layers=get_pytorch_model_architecture(self.F))
-                F = (self.F.external_port_filter.detach().numpy() @ nn_F.create_forward(model.x)).T
+                F_inputs = []
+                if self.F.statedependent:
+                    F_inputs.append(model.x)
+                if self.F.timedependent:
+                    t = model.set_variable(var_type="_tvp", var_name="time", shape=(1, 1))
+                    F_inputs.append(t)
+                    self._use_time_variable = True
+                F = (self.F.external_port_filter.detach().numpy() @ nn_F.create_forward(*F_inputs)).T
 
-                model._p.append(casadi.tools.entry('F_params', sym=nn_F.params))
+                model._p["name"].append("F_params")
+                model._p["var"].append(nn_F.params)
                 self.dynamics_params['F'] = pytorch_parameter_getter(self.F)
             else:
                 F = self.F(model.x.cat)
@@ -165,29 +176,41 @@ class PortHamiltonianMPC(PortHamiltonianController):
                 R_weights = casadi.SX.sym('R_weights', self.R.rs.shape[0])
                 R = casadi.diag(self.R.pick_rs.detach().numpy() @ R_weights)
 
-                model._p.append(casadi.tools.entry('R_params', sym=R_weights))
+                model._p["name"].append("R_params")
+                model._p["var"].append(R_weights)
                 self.dynamics_params['R'] = lambda: self.R.get_parameters()
             elif isinstance(self.R, torch.nn.Module):
                 nn_R = CasadiFCNN(layers=get_pytorch_model_architecture(self.R))
-                R = nn_R.create_forward(model.x)
+                R = nn_R.create_forward(model.x.cat)
 
-                model._p.append(casadi.tools.entry('R_params', sym=nn_R.params))
+                model._p["name"].append("R_params")
+                model._p["var"].append(nn_R.params)
                 self.dynamics_params['R'] = pytorch_parameter_getter(self.R)
             elif callable(self.R):
                 R = self.R(model.x.cat)
             else:
                 R = self.R
 
-            dynamics = CasadiPortHamiltonianSystem(S=self.S, dH=dH, u=u, R=R, F=F) # TODO: how to get time variable from MPC for time-dependent external port?
+            dynamics = CasadiPortHamiltonianSystem(S=self.S, dH=dH, u=u, R=R, F=F)
             rhs = dynamics.create_forward()
-        else:  # TODO: maybe this can be general right-hand-side? i.e. also used for analytical
+        else:
             nn_baseline = CasadiFCNN(layers=get_pytorch_model_architecture(self.baseline))
             nn_baseline.set_weights_and_biases(get_pytorch_model_parameters(self.baseline))
-            rhs = nn_baseline.create_forward(model.x.cat).T + u
 
-            model._p.append(casadi.tools.entry('baseline_params', sym=nn_baseline.params))
+            baseline_inputs = []
+            if self.baseline.statedependent:
+                baseline_inputs.append(model.x)
+            if self.baseline.timedependent:
+                t = model.set_variable(var_type="_tvp", var_name="time", shape=(1, 1))
+                baseline_inputs.append(t)
+                self._use_time_variable = True
 
-            self.dynamics_params['baseline'] = nn_baseline
+            rhs = nn_baseline.create_forward(*baseline_inputs).T + u
+
+            model._p["name"].append("baseline_params")
+            model._p["var"].append(nn_baseline.params)
+
+            self.dynamics_params['baseline'] = pytorch_parameter_getter(self.baseline)
 
         for state_i, state_name in enumerate(state_names):
             model.set_rhs(state_name, rhs[state_i])
@@ -249,6 +272,8 @@ class PortHamiltonianMPC(PortHamiltonianController):
                     for t_i in range(self.mpc.n_horizon + 1):
                         for name, fun in self.references.items():
                             self._tvp_template['_tvp', t_i, name] = fun(float(t_now) + t_i * self.mpc.t_step)
+                if self._use_time_variable:
+                    self._tvp_template['_tvp', :, "time"] = (self.mpc.t0 + np.arange(self.mpc.n_horizon + 1) * self.mpc.t_step).tolist()
 
                 return self._tvp_template
 
