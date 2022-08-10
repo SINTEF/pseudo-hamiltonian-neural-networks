@@ -78,7 +78,12 @@ class DynamicSystemNN(torch.nn.Module):
             t_sample = to_tensor(t_sample, self.ttype)
             if not integrator and self.controller is not None:
                 integrator = 'rk4'
-                print('Warning: Since the system contains a controller, the RK4 integrator is used to simulate the trajectory instead of solve_ivp')
+                print('Warning: Since the system contains a controller, '
+                      'the rk4 integrator is used to simulate the trajectory instead of solve_ivp')
+            elif integrator.lower() not in ['euler', 'rk4']:
+                print('Warning: Only explicit integrators euler and rk4 or no integrator (False) '
+                      f'allowed for inference. Ignoring integrator {integrator} and using rk4.')
+                integrator = 'rk4'
             if self.controller is not None:
                 self.controller.reset()
                 if reference is not None:
