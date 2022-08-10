@@ -48,7 +48,6 @@ if __name__ == "__main__":
         ntanks = pH_system.ntanks
         R = pH_system.dissipation_matrix
         external_port = pH_system.external_port
-        baseline = None
 
     control_port_filter = np.zeros((pH_system.nstates,))
     control_port_filter[5] = 1
@@ -72,6 +71,7 @@ if __name__ == "__main__":
         mpc.set_rterm(inflow=1e-2)
         mpc.bounds['lower', '_u', 'inflow'] = -10
         mpc.bounds['upper', '_u', 'inflow'] = 10
+        mpc.set_param(t_step=0.025)
 
         return mpc
 
