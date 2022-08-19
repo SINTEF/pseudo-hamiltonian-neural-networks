@@ -139,8 +139,8 @@ if __name__ == "__main__":
                                       external_port_est=ext_port_nn)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
-    traindata = generate_dataset(pH_system, true_derivatives, ntrajectories_train, t_sample, nsamples=ntrainingpoints)
-    valdata = generate_dataset(pH_system, true_derivatives, ntrajectories_val, t_sample)
+    traindata = generate_dataset(pH_system, ntrajectories_train, t_sample, true_derivatives, nsamples=ntrainingpoints)
+    valdata = generate_dataset(pH_system, ntrajectories_val, t_sample, true_derivatives)
 
     bestmodel, vloss = train(model, integrator, traindata, optimizer, valdata=valdata, epochs=epochs,
                              batch_size=batch_size, shuffle=shuffle, l1_param_port=l1_param_port,
