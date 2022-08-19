@@ -5,15 +5,21 @@ import numpy as np
 
 class PortHamiltonianController:
     """
-    Abstract base class for controllers of port-hamiltonian systems of the form:
+    Abstract base class for controllers of port-hamiltonian systems
+    of the form::
+
         dx/dt = (S - R)*grad[H(x)] + F(x, t) + u(x, t)
-    where this class implements u(x, t), i.e. known and controlled external ports. Implementations of controllers
+
+    where this class implements u(x, t), i.e. known and controlled
+    external ports. Implementations of controllers
     must subclass this class and implement all of its methods.
 
     parameters
     ----------
-        control_port_filter: A binary matrix of (nstates, nstates) or vector of (nstates) where 1 signifies that the
-        corresponding state has a control input in its derivative right-hand-side.
+    control_port_filter : (nstates, nstates) or (nstates,) ndarray
+        A binary ndarray where 1 signifies that the corresponding
+        state has a control input in its derivative right-hand-side.
+
     """
     def __init__(self, control_port_filter):
         self.ncontrols = int(np.sum(control_port_filter))
@@ -21,37 +27,52 @@ class PortHamiltonianController:
 
     def __call__(self, x, t=None):
         """
-        Control inputs are computed by calling the controller with a system state, and optionally with system time for
-        controllers that depend on time (e.g. through time-varying references). The returned control input will have the
+        Control inputs are computed by calling the controller with a
+        system state, and optionally with system time for controllers
+        that depend on time (e.g. through time-varying references).
+        The returned control input will have the
         same shape as the system state.
 
         parameters
         ----------
-            x   :   System state
-            t   :   System time
+            x : (nstates,) ndarray
+                System state
+            t : number, default None
+                System time
+
+        Returns
+        -------
+            (nstates,) ndarray
         """
         if torch.is_tensor(x):
             x = x.detach().numpy()
         if torch.is_tensor(t):
             t = t.detach().numpy()
-        return (self.control_port_filter @ self._get_input(x, t)).ravel()  # TODO: what about batch operation?
+        # TODO: what about batch operation?
+        return (self.control_port_filter @ self._get_input(x, t)).ravel()
 
     def _get_input(self, x, t=None):
         raise NotImplementedError
 
     def reset(self):
         """
-        Function called before starting control of a new trajectory. Resets the controllers' internal state, as well as
+        Function called before starting control of a new trajectory.
+        Resets the controllers' internal state, as well as
         any reference objects.
         """
         raise NotImplementedError
 
     def set_reference(self, references):
         """
-        Function used to change the Reference objects specified during instantiation.
-        parameters
+        Function used to change the Reference objects specified during
+        instantiation.
+
+        Parameters
         ----------
-            references  :   Dictionary of reference name as keys and Reference object as values.
+        references  :dict of references
+            Dictionary of reference name as keys and Reference
+            object as values.
+
         """
         raise NotImplementedError
 

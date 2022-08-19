@@ -7,55 +7,95 @@ import numpy as np
 import casadi
 import torch
 
+__all__ = ['PortHamiltonianMPC']
+
 
 class PortHamiltonianMPC(PortHamiltonianController):
     """
-    This class implements a model predictive controller (MPC) that solves an optimal control problem to decide control
-    inputs, where the model is formulated as a port-hamiltonian system:
-        dx/dt = (S - R)*grad[H(x)] + F(x, t) + u(x, t)
-    or if the baseline argument is provided:
+    This class implements a model predictive controller (MPC) that
+    solves an optimal control problem to decide control inputs,
+    where the model is formulated as a port-hamiltonian system::
+
+        dx/dt = (S - R) * grad[H(x)] + F(x, t) + u(x, t)
+
+    or if the baseline argument is provided::
+
         dx/dt = Baseline(x, t) + u(x, t)
-    Each component of the model can be provided as either a python function or as a pytorch neural network (NN). Note
-    that for any component implemented as a python function mist use only operations that are compatible with casadi
-    variable types.
 
-    The MPC is based on the do-mpc python toolbox, see its documentation for configuration options and behaviour
-    (do-mpc.com).
+    Each component of the model can be provided as either a python
+    function or as a pytorch neural network (NN). Note that for any
+    component implemented as a python function mist use only operations
+    that are compatible with casadi variable types.
 
-    parameters
+    The MPC is based on the do-mpc python toolbox, see its documentation
+    for configuration options and behaviour (do-mpc.com).
+
+    Parameters
     ----------
-        control_port_filter :  A binary matrix of (nstates, nstates) or vector of (nstates) where 1 signifies that the
-        corresponding state has a control input in its derivative right-hand-side.
-        S   :   (nstates, nstates) ndarray. nstates if inferred from this.
-        dH  :   Function/NN computing the gradient of the Hamiltonian. Takes one argument (state).
-                Accepts an ndarray both of size (nstates,) and of size (nsamples, nstates), and
-                returns either an ndarray of size (nstates,) or an ndarray of size (nsamples, nstates),
-                correspondingly.
-        H   :   Function/NN computing the Hamiltonian of the system. Takes one argument (state,).
-                Accepts ndarrays both of size (nstates,) and of size (nsamples, nstates), and
-                returns either a scalar or an ndarray of size (nstates,), correspondingly.
-        R   :   (nstates, nstates) ndarray or (N,) ndarray of diagonal elements or NN
-        F   :   Function/NN computing external ports taking two arguments (state and time), which can be both
-                an ndarray of size (nstates,) + a scalar, and an ndarray of size (nsamples, nstates) + an
-                ndarray of size (nstates,). Returns either an ndarray of size (nstates,) or an ndarray of size
-                (nsamples, nstates), correspondingly.
-        baseline   :   Alternative model formulation
-        state_names :   List of size (nstates) where each entry sets the name of the model state variables such that
-        states can be referenced by these names.
-        control_names   : List of size (ncontrols) where each entry sets the name of the model control input variables such
-        that inputs can be referenced by these names.
-        references  : Dictionary with reference names as keys and Reference as values. Note that all references must be
-        specified using this argument on object instantiation as they must be added as variables to the model.
-        model_callback  : Callback function for the end of model creation taking the model as argument,
-        and returns the modified model. Can be used to add additional variables to the model.
-        p_callback  :   Callback function called before computing the MPC solution (get_input) where values for
-        additional parameters must be set by user. Takes as argument the parameter object and the current model time,
-        and must return the modified parameter object.
-        tvp_callback    :   Callback function called before computing the MPC solution (get_input) where values for
-        additional time-varying parameters must be set by user. Takes as argument the time-varying-parameter object and
-        the current model time, and must return the modified time-varying-parameter object object.
+    control_port_filter : matrix
+        A binary matrix of (nstates, nstates) or vector of (nstates)
+        where 1 signifies that the corresponding state has a control
+        input in its derivative right-hand-side.
+    S : matrix, default None
+        (nstates, nstates) ndarray. nstates if inferred from this.
+    dH : callable, default None
+        Function/NN computing the gradient of the Hamiltonian. Takes one
+        argument (state). Accepts an ndarray both of size (nstates,) and
+        of size (nsamples, nstates), and returns either an ndarray of
+        size (nstates,) or an ndarray of size (nsamples, nstates),
+        correspondingly.
+    H  : callable, default None
+        Function/NN computing the Hamiltonian of the system. Takes one
+        argument (state,). Accepts ndarrays both of size (nstates,) and
+        of size (nsamples, nstates), and returns either a scalar or an
+        ndarray of size (nstates,), correspondingly.
+    R : matrix or array, default None
+        (nstates, nstates) ndarray or (N,) ndarray of diagonal elements
+        or NN
+    F : callable, default None
+        Function/NN computing external ports taking two arguments
+        (state and time), which can be both an ndarray of size
+        (nstates,) + a scalar, and an ndarray of size
+        (nsamples, nstates) + an ndarray of size (nstates,). Returns
+        either an ndarray of size (nstates,) or an ndarray of size
+        (nsamples, nstates), correspondingly.
+    baseline : callable, default None
+        Alternative model formulation
+    state_names : list, default None
+        List of length (nstates) where each entry sets the name of the
+        model state variables such that states can be referenced by
+        these names.
+    control_names : list, default None
+        List of size (ncontrols) where each entry sets the name of the
+        model control input variables such that inputs can be referenced
+        by these names.
+    references : dict, default None
+        Dictionary with reference names as keys and Reference as values.
+        Note that all references must be specified using this argument
+        on object instantiation as they must be added as variables to
+        the model.
+    model_callback : callable, default None
+        Callback function for the end of model creation taking the model
+        as argument, and returns the modified model. Can be used to add
+        additional variables to the model.
+    p_callback : callable, default None
+        Callback function calles before computing the MPC solution
+        (get_input) where values for additional parameters must be set
+        by user. Takes as argument the parameter object and the current
+        model time, and must return the modified parameter object.
+    tvp_callback : callable, default None
+        Callback function called before computing the MPC solution
+        (get_input) where values for additional time-varying parameter
+        must be set by user. Takes as argument the
+        time-varying-parameter object and the current model time, and
+        must return the modified time-varying-parameter object object.
+
     """
-    def __init__(self, control_port_filter, S=None, dH=None, H=None, F=None, R=None, baseline=None, state_names=None, control_names=None, references=None, model_callback=None, p_callback=None, tvp_callback=None):
+
+    def __init__(self, control_port_filter, S=None, dH=None, H=None, F=None,
+                 R=None, baseline=None, state_names=None,
+                 control_names=None, references=None,
+                 model_callback=None, p_callback=None, tvp_callback=None):
         self.baseline = baseline
 
         if baseline is None:
@@ -224,15 +264,22 @@ class PortHamiltonianMPC(PortHamiltonianController):
 
     def setup(self, setup_callback):
         """
-        Function to finalize MPC creation. Must be called prior to use of the MPC for getting control inputs. Note that
-        the objective must be set by the user. Other MPC options such as constraints and optimization horizon can also
+        Function to finalize MPC creation. Must be called prior to use
+        of the MPC for getting control inputs. Note that the objective
+        must be set by the user. Other MPC options such as constraints
+        and optimization horizon can also
         be configured here through the setup_callback argument.
 
         parameters
         ----------
-            setup_callback  :   Function for user to finalize the MPC configuration. Takes as argument the MPC object,
-            and returns the modified mpc object. Note that set_objective must be called by user on the mpc object.
+        setup_callback : callable
+            Function for user to finalize the MPC configuration. Takes
+            as argument the MPC object, and returns the modified mpc
+            object. Note that set_objective must be called by user on
+            the mpc object.
+
         """
+
         default_settings = {
             'n_horizon': 10,
             't_step': 0.01,
@@ -282,7 +329,8 @@ class PortHamiltonianMPC(PortHamiltonianController):
 
     def reset(self):
         """
-        Function called before starting control of a new trajectory. Resets the MPC state, and the reference object.
+        Function called before starting control of a new trajectory.
+        Resets the MPC state, and the reference object.
         """
         self.mpc.reset_history()
         self.has_been_reset = True
@@ -292,13 +340,18 @@ class PortHamiltonianMPC(PortHamiltonianController):
 
     def set_reference(self, references):
         """
-        Function used to change the Reference objects specified during instantiation. Note that only existing references
+        Function used to change the Reference objects specified during
+        instantiation. Note that only existing references
         can be updated using this function.
 
-        parameters
+        Parameters
         ----------
-            references  :   Dictionary of reference name as keys and Reference object as values.
+        references : dict
+            Dictionary of reference name as keys and Reference object
+            as values.
+
         """
+
         assert isinstance(references, dict), 'The PortHamiltonianMPC class only supports references in dictionary format'
         assert all(name in self.references for name in references), 'New references can not be added after the MPC is created.'
         for name, ref_fun in references.items():
@@ -306,14 +359,20 @@ class PortHamiltonianMPC(PortHamiltonianController):
 
     def _get_input(self, x, t=None):
         """
-        Function used to compute the MPC solution and obtain the corresponding control input.
+        Function used to compute the MPC solution and obtain the
+        corresponding control input.
 
-        parameters
+        Parameters
         ----------
-            x   :   Initial state of the MPC optimal control problem.
-            t   :   System time for the optimal control problem. Affects parameters and time-varying parameters such as
+        x : array
+            Initial state of the MPC optimal control problem.
+        t : number
+            System time for the optimal control problem. Affects
+            parameters and time-varying parameters such as
             references.
+
         """
+
         if self.has_been_reset:
             self.mpc.x0 = x
             self.mpc.u0 = np.zeros((self.ncontrols,))
