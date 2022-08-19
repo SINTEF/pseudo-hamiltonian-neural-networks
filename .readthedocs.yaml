@@ -9,7 +9,7 @@ python:
   install:
     - requirements: porthamiltonians/docs/requirements.txt
     - method: pip
-      path: ..
+      path: porthamiltonians
 
 sphinx:
   fail_on_warning: true
