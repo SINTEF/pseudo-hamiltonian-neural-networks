@@ -4,16 +4,18 @@ import casadi.tools
 
 class CasadiFCNN:
     """
-    Casadi-implementation of a fully-connected neural network. The class takes in a specification of a neural network
+    Casadi-implementation of a fully-connected neural network. The class
+    takes in a specification of a neural network
     model and implements the specification as a Casadi function.
 
     parameters
     ----------
-        layers  :   List of dictionaries where each entry describes a layer of the neural network as returned by the
-        "get_pytorch_model_architecture" function.
+        layers : list of dicts
+            List of dictionaries where each entry describes a layer of
+            the neural network as returned by the
+            "get_pytorch_model_architecture" function.
     """
     def __init__(self, layers=()):
-        assert isinstance(layers, list) or isinstance(layers, tuple) and len(layers) == 1
         self.layers = layers
         self.params = None
         self.params_num = None

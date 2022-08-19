@@ -1,24 +1,35 @@
 import numpy as np
 from .phcontroller import PortHamiltonianController
 
+__all__ = ['PIDController']
+
 
 class PIDController(PortHamiltonianController):
     """
-    This class implements a proportional-integral-derivative (PID) controller. The PID controller is a SISO controller,
-    but several PIDs can be configured to run in parallel, up to one per state of the system.
+    This class implements a proportional-integral-derivative (PID)
+    controller. The PID controller is a SISO controller,
+    but several PIDs can be configured to run in parallel,
+    up to one per state of the system.
 
     parameters
     ----------
-        control_port_filter :   A binary matrix of (nstates, nstates) or vector of (nstates) where 1 signifies that the
-        corresponding state has a PID controller in its derivative right-hand-side.
-        gains   :   Dictionary where the key is the index of the state that the PID controls, and the value is another
-        dictionary of the form {"p": proportional gain, "i": integral gain", "d": derivative gain}. Missing gains are
-        assumed to be zero.
-        references  :    Dictionary where the key is the index of the state that the PID controls, and the value is
-        a Reference object for that PID controller.
-        input_bounds    :   Dictionary where the key is the index of the state that the PID controls, and the value
-        is a two-element list where the first element gives a lower bound for the control input and the second element
-        gives an upper bound.
+    control_port_filter : (nstates, nstates) or (nstates,) ndarray
+        A binary ndarray where 1 signifies that the corresponding
+        state has a control input in its derivative right-hand-side.
+    gains : dict
+        Dictionary where the key is the index of the state that the
+        PID controls, and the value is anotherdictionary of the form
+        {"p": proportional gain, "i": integral gain", "d":derivative
+        gain}. Missing gains are assumed to be zero.
+    references : dict of references
+        Dictionary where the key is the index of the state that the PID
+        controls, and the value is a Reference object for that PID
+        controller.
+    input_bounds : dict
+        Dictionary where the key is the index of the state that the PID
+        controls, and the value is a two-element list where the first
+        element gives a lower bound for the control input and the second
+        element gives an upper bound.
     """
     def __init__(self, control_port_filter, gains, references, input_bounds=None):
         self.gains = {}
