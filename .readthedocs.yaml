@@ -13,4 +13,4 @@ python:
 
 sphinx:
   fail_on_warning: true
-  configuration: porthamiltonians/docs/conf.py
+  configuration: porthamiltonians/docs/source/conf.py
