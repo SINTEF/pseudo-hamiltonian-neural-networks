@@ -2,6 +2,8 @@
 
 This repository contains a the package porthamiltonians for modelling port-Hamiltonian systems with neural networks as decribed in [(Eidnes et al. 2022)](https://arxiv.org/pdf/2206.02660.pdf) and example scripts for training and inference.
 
+[Documentation available here](https://port-hamiltonian-neural-networks.readthedocs.io/en/latest/)
+
 ## Installation
 
 The porthamiltonian package is available via PyPi:
