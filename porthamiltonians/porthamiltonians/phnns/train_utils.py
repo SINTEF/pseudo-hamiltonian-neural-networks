@@ -10,9 +10,10 @@ import torch.nn as nn
 from .port_hamiltonian_neural_network import PortHamiltonianNN, load_phnn_model, store_phnn_model
 from .models import load_baseline_model, store_baseline_model
 
+def generate_dataset(pH_system, ntrajectories, t_sample,
+                     true_derivatives=False, nsamples=None, seed=None,
+                     noise_std=0., references=None, ttype=torch.float32):
 
-def generate_dataset(pH_system, integrator, ntrajectories, t_sample, nsamples=None,
-                     seed=None, noise_std=0., control_refs=None, ttype=torch.float32):
     if ntrajectories == 0:
         return None
     pH_system.seed(seed)
@@ -22,15 +23,15 @@ def generate_dataset(pH_system, integrator, ntrajectories, t_sample, nsamples=No
     dxdt = np.zeros((ntrajectories, traj_length, nstates))
     t = np.zeros((ntrajectories, traj_length))
     u = np.zeros((ntrajectories, traj_length - 1, nstates))
-    if control_refs is None:
-        control_refs = [None] * ntrajectories
+    if references is None:
+        references = [None] * ntrajectories
 
     for i in range(ntrajectories):
-        x[i], dxdt[i], t[i], u[i] = pH_system.sample_trajectory(t_sample, noise_std=noise_std, reference=control_refs[i])
+        x[i], dxdt[i], t[i], u[i] = pH_system.sample_trajectory(
+            t_sample, noise_std=noise_std, reference=references[i])
 
     dt = torch.tensor([t[0, 1] - t[0, 0]], dtype=ttype)
 
-    # Set up pairs of succesive points to train on an integrator
     x_start = torch.tensor(x[:, :-1], dtype=ttype).reshape(-1, nstates)
     x_end = torch.tensor(x[:, 1:], dtype=ttype).reshape(-1, nstates)
     t_start = torch.tensor(t[:, :-1], dtype=ttype).reshape(-1, 1)
@@ -41,7 +42,7 @@ def generate_dataset(pH_system, integrator, ntrajectories, t_sample, nsamples=No
     else:
         u = torch.tensor(u[:, :-1], dtype=ttype).reshape(-1, nstates)
 
-    if not integrator:
+    if not true_derivatives:
         dxdt = torch.tensor(dxdt[:, :-1], dtype=ttype).reshape(-1, nstates)
     else:
         dxdt = (x_end - x_start).clone().detach() / dt[0, 0]

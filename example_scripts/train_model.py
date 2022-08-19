@@ -32,6 +32,10 @@ if __name__ == "__main__":
                         help='Sampling time.')
     parser.add_argument('--t_max', type=float, default=1,
                         help='Length of trajectory.')
+    parser.add_argument('--true_derivatives', action='store_true',
+                        help='Use the true derivative values for training.'
+                             ' If not provided derivatives in the training data'
+                             ' are estimated by the finite differences.')
     parser.add_argument('--integrator', type=str, choices=[False, 'euler', 'rk4', 'midpoint', 'srk4'],
                         default=False,
                         help='Integrator used during training.')
@@ -75,7 +79,13 @@ if __name__ == "__main__":
     ntrainingpoints = args.ntrainingpoints
     sampling_time = args.sampling_time
     t_max = args.t_max
-    integrator = args.integrator
+    true_derivatives = args.true_derivatives
+    if true_derivatives:
+        integrator = False
+        print('Warning: As exact derivatives are used when generating training data, '
+              '(true_derivatives = True) integrator is set to False.')
+    else:
+        integrator = args.integrator
     F_timedependent = bool(args.F_timedependent)
     F_statedependent = bool(args.F_statedependent)
     hidden_dim = args.hidden_dim
@@ -129,8 +139,8 @@ if __name__ == "__main__":
                                       external_port_est=ext_port_nn)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
-    traindata = generate_dataset(pH_system, integrator, ntrajectories_train, t_sample, nsamples=ntrainingpoints)
-    valdata = generate_dataset(pH_system, integrator, ntrajectories_val, t_sample)
+    traindata = generate_dataset(pH_system, true_derivatives, ntrajectories_train, t_sample, nsamples=ntrainingpoints)
+    valdata = generate_dataset(pH_system, true_derivatives, ntrajectories_val, t_sample)
 
     model = train(model, integrator, traindata, optimizer, valdata=valdata, epochs=epochs,
                   batch_size=batch_size, shuffle=shuffle, l1_param_port=l1_param_port,
