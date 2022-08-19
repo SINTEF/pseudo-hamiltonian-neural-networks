@@ -130,21 +130,21 @@ if __name__ == "__main__":
                                          statedependent=F_statedependent,
                                          external_port_filter=external_port_filter)
 
-            R_estimator = R_estimator(damped_states)
+            r_est = R_estimator(damped_states)
 
             model = PortHamiltonianNN(nstates,
                                       pH_system.structure_matrix,
                                       hamiltonian_est=hamiltonian_nn,
-                                      dissipation_est=R_estimator,
+                                      dissipation_est=r_est,
                                       external_port_est=ext_port_nn)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
     traindata = generate_dataset(pH_system, true_derivatives, ntrajectories_train, t_sample, nsamples=ntrainingpoints)
     valdata = generate_dataset(pH_system, true_derivatives, ntrajectories_val, t_sample)
 
-    model = train(model, integrator, traindata, optimizer, valdata=valdata, epochs=epochs,
-                  batch_size=batch_size, shuffle=shuffle, l1_param_port=l1_param_port,
-                  l1_param_dissipation=l1_param_dissipation,
-                  loss_fn=torch.nn.MSELoss(), verbose=verbose, early_stopping_patience=early_stopping_patience,
-                  early_stopping_delta=early_stopping_delta, return_best=True, store_best=store_results,
-                  store_best_dir=storedir, modelname=modelname, trainingdetails=vars(args))
+    bestmodel, vloss = train(model, integrator, traindata, optimizer, valdata=valdata, epochs=epochs,
+                             batch_size=batch_size, shuffle=shuffle, l1_param_port=l1_param_port,
+                             l1_param_dissipation=l1_param_dissipation,
+                             loss_fn=torch.nn.MSELoss(), verbose=verbose, early_stopping_patience=early_stopping_patience,
+                             early_stopping_delta=early_stopping_delta, return_best=True, store_best=store_results,
+                             store_best_dir=storedir, modelname=modelname, trainingdetails=vars(args))
