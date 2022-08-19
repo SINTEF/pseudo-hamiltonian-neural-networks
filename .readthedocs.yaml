@@ -7,9 +7,10 @@ build:
 
 python:
   install:
+    - requirements: porthamiltonians/docs/requirements.txt
     - method: pip
-    - requirements: requirements.txt
       path: ..
 
 sphinx:
   fail_on_warning: true
+  configuration: porthamiltonians/docs/conf.py
