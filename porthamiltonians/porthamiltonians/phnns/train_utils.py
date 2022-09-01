@@ -90,7 +90,7 @@ def generate_dataset(pH_system, ntrajectories, t_sample,
     else:
         u = torch.tensor(u[:, :-1], dtype=ttype).reshape(-1, nstates)
 
-    if not true_derivatives:
+    if true_derivatives:
         dxdt = torch.tensor(dxdt[:, :-1], dtype=ttype).reshape(-1, nstates)
     else:
         dxdt = (x_end - x_start).clone().detach() / dt[0, 0]
