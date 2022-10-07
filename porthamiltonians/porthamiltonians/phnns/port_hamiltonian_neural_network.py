@@ -150,7 +150,7 @@ class PortHamiltonianNN(DynamicSystemNN):
 
     def _structure_matrix(self, x):
         return to_tensor(self.structure_matrix, self.ttype)
-    
+
     def _hamiltonian_true(self, x):
         return self.hamiltonian_true(x).detach()
 

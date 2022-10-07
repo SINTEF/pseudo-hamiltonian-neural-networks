@@ -25,7 +25,7 @@ if __name__ == "__main__":
             H = None
             dH = None
             R = None
-            baseline = pH_system.model
+            baseline = pH_system.rhs_model
             external_port = None
         else:
             S = pH_system.structure_matrix.copy()
