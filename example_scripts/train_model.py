@@ -6,7 +6,7 @@ import torch
 
 from porthamiltonians.phsystems import init_tanksystem, init_msdsystem
 from porthamiltonians.phnns import PortHamiltonianNN, DynamicSystemNN, load_dynamic_system_model
-from porthamiltonians.phnns import R_estimator, BaselineNN, HamiltonianNN, ExternalPortNN
+from porthamiltonians.phnns import R_estimator, BaselineNN, BaselineSplitNN, HamiltonianNN, ExternalPortNN
 from porthamiltonians.phnns import npoints_to_ntrajectories_tsample, train, generate_dataset
 
 ttype = torch.float32
@@ -16,8 +16,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--system', type=str, choices=['tank', 'msd'], required=True,
                         help='Choose to train a tank or a forced mass spring damper.')
-    parser.add_argument('--baseline', type=int, default=0,  choices=[0, 1],
-                        help='If 1 use baseline.')
+    parser.add_argument('--baseline', type=int, default=0,  choices=[0, 1, 2],
+                        help='If 1 use baseline network x_dot = network(x, t). '
+                             'If 2 use split baseline network '
+                             'x_dot = network_x(x) + network_t(x).')
     parser.add_argument('--storedir', type=str,
                         help='Directory for storing the best model in terms of validation loss.')
     parser.add_argument('--modelname', type=str,
@@ -118,8 +120,17 @@ if __name__ == "__main__":
     if modelpath is not None:
         model, optimizer, metadict = load_dynamic_system_model(modelpath)
     else:
-        if baseline:
+        if baseline == 1:
             baseline_nn = BaselineNN(nstates, hidden_dim, F_timedependent, F_statedependent)
+            model = DynamicSystemNN(nstates, baseline_nn)
+        elif baseline == 2:
+            external_port_filter_t = np.zeros(nstates)
+            external_port_filter_t[-1] = 1
+            baseline_nn = BaselineSplitNN(
+                nstates, hidden_dim, noutputs_x=nstates,
+                noutputs_t=1, external_port_filter_x=None,
+                external_port_filter_t=external_port_filter_t,
+                ttype=torch.float32)
             model = DynamicSystemNN(nstates, baseline_nn)
         else:
             hamiltonian_nn = HamiltonianNN(nstates, hidden_dim)

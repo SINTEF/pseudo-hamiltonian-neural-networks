@@ -17,6 +17,8 @@ Classes present in porthamiltonians.phsystems
 
     :py:class:`~.models.ExternalPortNN`
 
+    :py:class:`~.models.BaselineSplitNN`
+
     :py:class:`~.models.R_NN`
 
     :py:class:`~.models.R_estimator`
