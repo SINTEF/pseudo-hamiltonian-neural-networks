@@ -215,7 +215,8 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
                                             valdata_batched, loss_fn)
             end = datetime.datetime.now()
             if verbose:
-                print(f'Validation loss: {np.format_float_scientific(vloss, 2)}')
+                print('Validation loss: '
+                      f'{np.format_float_scientific(vloss, 2)}')
                 delta = end - start
                 print('Validation loss computed in'
                       f' {delta.seconds:d}.{int(delta.microseconds / 1e4):d}'
@@ -366,8 +367,9 @@ def train_one_epoch(model, traindata_batched, loss_fn, optimizer, integrator,
             loss = loss_fn(dxdt_hat, dxdt)
             if (isinstance(model, PortHamiltonianNN)
                     and ((l1_param_port > 0) or (l1_param_dissipation > 0))):
-                loss += l1_loss_pHnn(model, l1_param_port, l1_param_dissipation,
-                                     input_tuple[0], input_tuple[2])
+                loss += l1_loss_pHnn(
+                    model, l1_param_port, l1_param_dissipation,
+                    input_tuple[0], input_tuple[2])
 
         loss.backward()
         optimizer.step()
@@ -399,7 +401,8 @@ def l1_loss_pHnn(pHnn_model, l1_param_port, l1_param_dissipation, x, t=None):
     penalty = 0
     if (isinstance(pHnn_model.external_port, nn.Module) and (l1_param_port > 0)
             and (not pHnn_model.external_port_provided)):
-        penalty += l1_param_port*torch.abs(pHnn_model.external_port(x, t)).mean()
+        penalty += l1_param_port*torch.abs(
+            pHnn_model.external_port(x, t)).mean()
     if (isinstance(pHnn_model.R, nn.Module) and (l1_param_dissipation > 0)
             and (not pHnn_model.R_provided)):
         penalty += l1_param_dissipation*torch.abs(pHnn_model.R(x)).mean()
@@ -452,7 +455,7 @@ class EarlyStopping():
         self.min_delta = min_delta
         self.counter = 0
         self.best_loss = np.inf
-        
+
     def __call__(self, val_loss):
         """
         Checks if *val_loss* is at least *self.min_delta* smaller

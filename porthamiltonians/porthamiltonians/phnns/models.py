@@ -320,7 +320,7 @@ class R_NN(BaseNN):
             noutputs = nstates**2
             self.forward = self._forward
         super().__init__(nstates, noutputs, hidden_dim, False, True)
-        
+
         self.nstates = nstates
 
     def _forward_diag(self, x):
@@ -428,7 +428,8 @@ def load_baseline_model(modelpath):
         hidden_dim = metadict['rhs_model']['hidden_dim']
         timedependent = metadict['rhs_model']['timedependent']
         statedependent = metadict['rhs_model']['statedependent']
-        rhs_model = BaselineNN(nstates, hidden_dim, timedependent, statedependent)
+        rhs_model = BaselineNN(
+            nstates, hidden_dim, timedependent, statedependent)
     rhs_model.load_state_dict(metadict['rhs_model']['state_dict'])
 
     model = DynamicSystemNN(nstates, rhs_model=rhs_model,
