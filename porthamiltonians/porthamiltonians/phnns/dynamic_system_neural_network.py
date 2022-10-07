@@ -64,10 +64,10 @@ class DynamicSystemNN(torch.nn.Module):
         self.ttype = ttype
         self.nstates = nstates
         self.controller = controller
-        self.model = rhs_model
+        self.rhs_model = rhs_model
         if init_sampler is not None:
             self._initial_condition_sampler = init_sampler
-        self.rhs_model = self._x_dot
+        self.x_dot = self._x_dot
 
     def seed(self, seed):
         """
@@ -86,7 +86,7 @@ class DynamicSystemNN(torch.nn.Module):
         See :py:meth:~`utils.derivatives.time_derivative`
         """
 
-        return time_derivative(integrator, self.rhs_model, *args, **kwargs)
+        return time_derivative(integrator, self.x_dot, *args, **kwargs)
 
     def simulate_trajectory(self, integrator, t_sample, x0=None,
                             noise_std=0., reference=None):
@@ -127,7 +127,7 @@ class DynamicSystemNN(torch.nn.Module):
             x0 = self._initial_condition_sampler(1)
 
         if not integrator and self.controller is None:
-            x_dot = lambda t, x: self.rhs_model(
+            x_dot = lambda t, x: self.x_dot(
                         torch.tensor(x.reshape(1, x.shape[-1]),
                                      dtype=self.ttype),
                         torch.tensor(np.array(t).reshape((1, 1)),
@@ -278,7 +278,7 @@ class DynamicSystemNN(torch.nn.Module):
         t = to_tensor(t, self.ttype)
         u = to_tensor(u, self.ttype)
 
-        dynamics = self.model(x, t)
+        dynamics = self.rhs_model(x, t)
         if u is not None:
             dynamics += u
         return dynamics
