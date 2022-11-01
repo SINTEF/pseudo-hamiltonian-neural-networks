@@ -37,11 +37,11 @@ class DynamicSystemNN(torch.nn.Module):
         returning a tensor of shape (nstates,). Note that this function
         should not take batch inputs, and that when calling
         PortHamiltonianNN.sample_trajectory when a controller is
-        provided, the Runge-Kutta 4 method will be used for integration
-        in favor of Scipy's solve_ivp.
+        provided, the Runge-Kutta-4 method will be used for integration
+        in favor of SciPy's solve_ivp.
 
     init_sampler : callable, default None
-        Function for sampling initial conditions. Callabale taking a
+        Function for sampling initial conditions. Callable taking a
         number specifying the number of inital conditions to sample, M,
         as input and returning a tensor of shape (M, nstates) with
         inital conditions for the system. This sampler is used when
@@ -64,10 +64,10 @@ class DynamicSystemNN(torch.nn.Module):
         self.ttype = ttype
         self.nstates = nstates
         self.controller = controller
-        self.model = rhs_model
+        self.rhs_model = rhs_model
         if init_sampler is not None:
             self._initial_condition_sampler = init_sampler
-        self.rhs_model = self._x_dot
+        self.x_dot = self._x_dot
 
     def seed(self, seed):
         """
@@ -86,7 +86,7 @@ class DynamicSystemNN(torch.nn.Module):
         See :py:meth:~`utils.derivatives.time_derivative`
         """
 
-        return time_derivative(integrator, self.rhs_model, *args, **kwargs)
+        return time_derivative(integrator, self.x_dot, *args, **kwargs)
 
     def simulate_trajectory(self, integrator, t_sample, x0=None,
                             noise_std=0., reference=None):
@@ -98,11 +98,10 @@ class DynamicSystemNN(torch.nn.Module):
         ----------
         integrator : str or False
             Specifies which solver to use during simulation. If False,
-            the problem is left to scipy's solve_ivp. If 'euler',
-            'midpoint', 'rk4' or 'srk4' the system is simulated with
-            the forward euler method, the implicit midpoint method,
-            the explicit Runge-Kutta 4 method or a symmetric fourth
-            order Runge-Kutta method, respectively.
+            the problem is left to scipy's solve_ivp. If 'euler', the system
+            is simulated with the forward Euler method.
+            If 'midpoint', 'rk4' or 'srk4' the system is simulated with
+            the classic Runge-Kutta-4 method.
         t_sample : (T, 1) tensor or ndarray
             Times at which the trajectory is sampled.
         x0 : (N,) tensor or ndarray, default None
@@ -127,7 +126,7 @@ class DynamicSystemNN(torch.nn.Module):
             x0 = self._initial_condition_sampler(1)
 
         if not integrator and self.controller is None:
-            x_dot = lambda t, x: self.rhs_model(
+            x_dot = lambda t, x: self.x_dot(
                         torch.tensor(x.reshape(1, x.shape[-1]),
                                      dtype=self.ttype),
                         torch.tensor(np.array(t).reshape((1, 1)),
@@ -147,7 +146,7 @@ class DynamicSystemNN(torch.nn.Module):
                       'instead of solve_ivp.')
             elif integrator.lower() not in ['euler', 'rk4']:
                 print('Warning: Only explicit integrators euler and rk4 or no '
-                      'integrator (False) allowed for inference. Ignoring '
+                      'integrator (False) allowed for simulation. Ignoring '
                       f'integrator {integrator} and using rk4.')
                 integrator = 'rk4'
 
@@ -191,11 +190,10 @@ class DynamicSystemNN(torch.nn.Module):
         ----------
         integrator : str or False
             Specifies which solver to use during simulation. If False,
-            the problem is left to scipy's solve_ivp. If 'euler',
-            'midpoint', 'rk4' or 'srk4' the system is simulated with
-            the forward euler method, the implicit midpoint method,
-            the explicit Runge-Kutta 4 method or a symmetric fourth
-            order Runge-Kutta method, respectively.
+            the problem is left to scipy's solve_ivp. If 'euler', the system
+            is simulated with the forward Euler method.
+            If 'midpoint', 'rk4' or 'srk4' the system is simulated with
+            the classic Runge-Kutta-4 method.
         t_sample : (T, 1) or (ntrajectories, T, 1) tensor or ndarray
             Times at which the trajectory is sampled.
         x0 : (ntrajectories, N) tensor or ndarray, default None
@@ -278,7 +276,7 @@ class DynamicSystemNN(torch.nn.Module):
         t = to_tensor(t, self.ttype)
         u = to_tensor(u, self.ttype)
 
-        dynamics = self.model(x, t)
+        dynamics = self.rhs_model(x, t)
         if u is not None:
             dynamics += u
         return dynamics
