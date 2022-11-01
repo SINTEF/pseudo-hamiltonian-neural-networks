@@ -8,7 +8,7 @@ def read(fname):
 
 setuptools.setup(
     name='porthamiltonians',
-    version='0.1.0',
+    version='1.1.0',
     author='Sølve Eidnes',
     author_email='solve.eidnes@sintef.no',
     description=('A package for simulating and learning port-Hamiltonian systems.'
@@ -18,7 +18,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     long_description=read('README.md'),
     classifiers=[
-        'Development Status :: 4 - Beta'
+        'Development Status :: 5 - Production/Stable'
     ],
     license='MIT',
     install_requires=[
