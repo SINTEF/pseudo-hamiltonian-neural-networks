@@ -27,6 +27,8 @@ setuptools.setup(
         'torch',
         'torchaudio',
         'torchvision',
-        'scipy'
+        'scipy',
+        'casadi',
+        'do_mpc'
     ],
 )
