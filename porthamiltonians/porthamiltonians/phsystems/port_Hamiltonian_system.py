@@ -14,9 +14,9 @@ class PortHamiltonianSystem():
 
         dx/dt = (S(x) - R(x))*grad[H(x)] + F(x, t)
 
-    where x is the system state, S is the interconection matrix,
-    R is the dissipation-matrix, H is the Hamiltonian of the system,
-    F is the external port.
+    where x is the system state, S is the skew-synnetric interconnection
+    matrix, R is the positive semi-definite dissipation matrix, H is the
+    Hamiltonian of the systemm, F is the external port(s).
 
     Parameters
     ----------
@@ -29,14 +29,14 @@ class PortHamiltonianSystem():
             input of shape (nsamples, nstates) and returning an ndarray
             of shape (nsamples, nstates, nstates). If None,
             the system is assumed to be canonical, and the
-            S matrix is set ot the skew-symmetric matrix
-            [[0, I_n], [-I_n, 0]].
+            S matrix is set to be [[0, I_n], [-I_n, 0]].
 
         dissipation_matrix : (N, N) ndarray or callable, default None
             Corresponds to the R matrix. Must either be an
             ndarray, or callable taking an ndarray input of shape
             (nsamples, nstates) and returning an ndarray of shape
-            (nsamples, nstates, nstates).
+            (nsamples, nstates, nstates). If None, the R matrix is set
+            to be the zero matrix of shape (N, N).
 
         hamiltonian : callable, default None
             The Hamiltonian H of the system. Callable taking a
@@ -147,7 +147,7 @@ class PortHamiltonianSystem():
 
     def x_dot(self, x, t, u=None):
         """
-        Computes the time derivative, the right hand side of the port-
+        Computes the time derivative by the right hand side of the port-
         Hamiltonian equation.
 
         Parameters

@@ -9,7 +9,7 @@ class CasadiPortHamiltonianSystem:
         dx/dt = (S - R)*grad(H) + F(x, t)
 
     where S is the skew-symmetric interconnection matrix,
-    R is a diagonal positive semi-definite damping/dissipation-matrix,
+    R is a diagonal positive semi-definite damping/dissipation matrix,
     H is the Hamiltonian of the system, F is the external interaction
     and x is the system state. The system dimension is denoted by nstates.
 
