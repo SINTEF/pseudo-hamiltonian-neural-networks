@@ -6,7 +6,7 @@ import torch
 
 from porthamiltonians.phsystems import init_tanksystem, init_msdsystem
 from porthamiltonians.phnns import PortHamiltonianNN, DynamicSystemNN, load_dynamic_system_model
-from porthamiltonians.phnns import R_estimator, BaselineNN, HamiltonianNN, ExternalPortNN
+from porthamiltonians.phnns import R_estimator, BaselineNN, BaselineSplitNN, HamiltonianNN, ExternalPortNN
 from porthamiltonians.phnns import npoints_to_ntrajectories_tsample, train, generate_dataset
 
 ttype = torch.float32
@@ -14,12 +14,17 @@ torch.set_default_dtype(ttype)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--system', type=str, choices=['tank', 'msd'], required=True,
-                        help='Choose to train a tank or a forced mass spring damper.')
-    parser.add_argument('--baseline', type=int, default=0,  choices=[0, 1],
-                        help='If 1 use baseline.')
+    parser.add_argument('--system', type=str, choices=['tank', 'msd'],
+                        required=True,
+                        help='Choose to train a tank or a '
+                             'forced mass spring damper.')
+    parser.add_argument('--baseline', type=int, default=0,  choices=[0, 1, 2],
+                        help='If 1 use baseline network x_dot = network(x, t). '
+                             'If 2 use split baseline network '
+                             'x_dot = network_x(x) + network_t(x).')
     parser.add_argument('--storedir', type=str,
-                        help='Directory for storing the best model in terms of validation loss.')
+                        help='Directory for storing the best model in terms '
+                             'of validation loss.')
     parser.add_argument('--modelname', type=str,
                         help='Name to use for the stored model.')
     parser.add_argument('--modelpath', type=str,
@@ -33,18 +38,24 @@ if __name__ == "__main__":
     parser.add_argument('--t_max', type=float, default=1,
                         help='Length of trajectory.')
     parser.add_argument('--true_derivatives', action='store_true',
-                        help='Use the true derivative values for training.'
-                             ' If not provided derivatives in the training data'
-                             ' are estimated by the finite differences.')
-    parser.add_argument('--integrator', type=str, choices=[False, 'euler', 'rk4', 'midpoint', 'srk4'],
-                        default=False,
+                        help='Use the true derivative values for training. '
+                             'If not provided derivatives in the training '
+                             'data are estimated by the finite differences.')
+    parser.add_argument('--integrator', type=str,
+                        choices=[False, 'euler', 'rk4', 'midpoint', 'srk4'],
+                        default='midpoint',
                         help='Integrator used during training.')
-    parser.add_argument('--F_timedependent', type=int, default=1, choices=[0, 1],
-                        help='If 1, make external port NN (or baseline NN) depend on time.')
-    parser.add_argument('--F_statedependent', type=int, default=1, choices=[0, 1],
-                        help='If 1, make external port NN (or baseline NN) depend on state.')
+    parser.add_argument('--F_timedependent', type=int, default=1,
+                        choices=[0, 1],
+                        help='If 1, make external port NN (or baseline NN) '
+                             'depend on time.')
+    parser.add_argument('--F_statedependent', type=int, default=1,
+                        choices=[0, 1],
+                        help='If 1, make external port NN (or baseline NN) '
+                             'depend on state.')
     parser.add_argument('--hidden_dim', type=int, default=100,
-                        help='Hidden dimension of fully connected neural network layers.')
+                        help='Hidden dimension of fully connected neural '
+                             'network layers.')
     parser.add_argument('--learning_rate', type=float, default=1e-3,
                         help='Learning rate of Adam optimizer.')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -56,13 +67,16 @@ if __name__ == "__main__":
     parser.add_argument('--l1_param_dissipation', type=float, default=0.,
                         help='L1 penalty parameter of dissipation estimate.')
     parser.add_argument('--early_stopping_patience', type=int,
-                        help=('Number of epochs to continue training without a decrease in validation'
-                              + ' loss of at least early_stopping_delta.'))
+                        help=('Number of epochs to continue training without '
+                              'a decrease in validation loss '
+                              'of at least early_stopping_delta.'))
     parser.add_argument('--early_stopping_delta', type=float,
-                        help='Minimum accepted decrease in validation loss to prevent early stopping.')
+                        help='Minimum accepted decrease in validation loss to '
+                             'prevent early stopping.')
     parser.add_argument('--shuffle', action='store_true',
                         help='Shuffle training data at every epoch.')
-    parser.add_argument('--noise_std', type=float, default=0., help='Noise level for training.')
+    parser.add_argument('--noise_std', type=float, default=0.,
+                        help='Noise level for training.')
     parser.add_argument('--store_results', '-s', action='store_true',
                         help='Store trained model and prediction results.')
     parser.add_argument('--seed', type=int,
@@ -82,8 +96,9 @@ if __name__ == "__main__":
     true_derivatives = args.true_derivatives
     if true_derivatives:
         integrator = False
-        print('Warning: As exact derivatives are used when generating training data, '
-              '(true_derivatives = True) integrator is set to False.')
+        print('Warning: As exact derivatives are used when generating '
+              'training data, (true_derivatives = True) integrator'
+              'is set to False.')
     else:
         integrator = args.integrator
     F_timedependent = bool(args.F_timedependent)
@@ -103,7 +118,8 @@ if __name__ == "__main__":
     verbose = args.verbose
     ntrajectories_val = args.ntrajectories_val
 
-    ntrajectories_train, t_sample = npoints_to_ntrajectories_tsample(ntrainingpoints, t_max, sampling_time)
+    ntrajectories_train, t_sample = npoints_to_ntrajectories_tsample(
+        ntrainingpoints, t_max, sampling_time)
 
     if system == 'tank':
         pH_system = init_tanksystem()
@@ -118,33 +134,65 @@ if __name__ == "__main__":
     if modelpath is not None:
         model, optimizer, metadict = load_dynamic_system_model(modelpath)
     else:
-        if baseline:
-            baseline_nn = BaselineNN(nstates, hidden_dim, F_timedependent, F_statedependent)
+        if baseline == 1:
+            baseline_nn = BaselineNN(
+                nstates, hidden_dim,
+                timedependent=F_timedependent, statedependent=True)
+            model = DynamicSystemNN(nstates, baseline_nn)
+        elif baseline == 2:
+            external_port_filter_t = np.zeros(nstates)
+            external_port_filter_t[-1] = 1
+            baseline_nn = BaselineSplitNN(
+                nstates, hidden_dim, noutputs_x=nstates,
+                noutputs_t=1, external_port_filter_x=None,
+                external_port_filter_t=external_port_filter_t,
+                ttype=ttype)
             model = DynamicSystemNN(nstates, baseline_nn)
         else:
             hamiltonian_nn = HamiltonianNN(nstates, hidden_dim)
             external_port_filter = np.zeros(nstates)
             external_port_filter[-1] = 1
-            ext_port_nn = ExternalPortNN(nstates, 1, hidden_dim=hidden_dim,
-                                         timedependent=F_timedependent,
-                                         statedependent=F_statedependent,
-                                         external_port_filter=external_port_filter)
+            ext_port_nn = ExternalPortNN(
+                nstates, 1, hidden_dim=hidden_dim,
+                timedependent=F_timedependent,
+                statedependent=F_statedependent,
+                external_port_filter=external_port_filter)
 
             r_est = R_estimator(damped_states)
 
-            model = PortHamiltonianNN(nstates,
-                                      pH_system.structure_matrix,
-                                      hamiltonian_est=hamiltonian_nn,
-                                      dissipation_est=r_est,
-                                      external_port_est=ext_port_nn)
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+            model = PortHamiltonianNN(
+                nstates,
+                pH_system.structure_matrix,
+                hamiltonian_est=hamiltonian_nn,
+                dissipation_est=r_est,
+                external_port_est=ext_port_nn)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
+                                     weight_decay=1e-4)
 
-    traindata = generate_dataset(pH_system, ntrajectories_train, t_sample, true_derivatives, nsamples=ntrainingpoints)
-    valdata = generate_dataset(pH_system, ntrajectories_val, t_sample, true_derivatives)
+    traindata = generate_dataset(
+        pH_system, ntrajectories_train, t_sample, true_derivatives,
+        nsamples=ntrainingpoints, noise_std=noise_std)
+    valdata = generate_dataset(
+        pH_system, ntrajectories_val, t_sample, true_derivatives, noise_std=noise_std)
 
-    bestmodel, vloss = train(model, integrator, traindata, optimizer, valdata=valdata, epochs=epochs,
-                             batch_size=batch_size, shuffle=shuffle, l1_param_port=l1_param_port,
-                             l1_param_dissipation=l1_param_dissipation,
-                             loss_fn=torch.nn.MSELoss(), verbose=verbose, early_stopping_patience=early_stopping_patience,
-                             early_stopping_delta=early_stopping_delta, return_best=True, store_best=store_results,
-                             store_best_dir=storedir, modelname=modelname, trainingdetails=vars(args))
+    bestmodel, vloss = train(
+        model,
+        integrator,
+        traindata,
+        optimizer,
+        valdata=valdata,
+        epochs=epochs,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        l1_param_port=l1_param_port,
+        l1_param_dissipation=l1_param_dissipation,
+        loss_fn=torch.nn.MSELoss(),
+        verbose=verbose,
+        early_stopping_patience=early_stopping_patience,
+        early_stopping_delta=early_stopping_delta,
+        return_best=True,
+        store_best=store_results,
+        store_best_dir=storedir,
+        modelname=modelname,
+        trainingdetails=vars(args)
+        )
