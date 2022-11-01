@@ -14,11 +14,11 @@ def time_derivative(integrator, x_dot, x_start, x_end,
     integrator : str or bool
         If 'euler' or False, the time derivative at *x_start*, *t_start*
         is computed. If 'midpoint', *x_start*, *x_end*, *t_start*,
-        *t_end* are used to compute the discretized implricit midpoint
+        *t_end* are used to compute the implicit midpoint
         estimate of the derivative. If 'rk4', *x_start*, *t_start*, *dt*
-        are used to compute the explicit Runge-Kutta 4 estimate.
+        are used to compute the classic Runge-Kutta-4 estimate.
         If 'srk4', *x_start*, *x_end*, *t_start*, *dt* are used to
-        compute the symmetric runge kutta 4 estimate.
+        compute a symmetric 4th order Runge-Kutta estimate.
     x_dot : callable
         Callable taking three arguments, x, t and u, returning the time
         derivative at the provided points.
@@ -56,6 +56,7 @@ def time_derivative(integrator, x_dot, x_start, x_end,
     elif integrator == 'srk4':
         return _discrete_time_derivative_srk4(x_dot, x_start, x_end,
                                               t_start, dt)
+
     else:
         raise ValueError(f'Unknown integrator {integrator}.')
 
@@ -78,6 +79,6 @@ def _discrete_time_derivative_srk4(x_dot, x1, x2, t1, dt):
     z2 = (1/2-np.sqrt(3)/6)*x1 + (1/2+np.sqrt(3)/6)*x2
     tm = (t1 + (1/2-np.sqrt(3)/6)*dt)
     tp = (t1 + (1/2+np.sqrt(3)/6)*dt)
-    z3 = xh - np.sqrt(3)/6*dt*x_dot(z2, tp)
-    z4 = xh + np.sqrt(3)/6*dt*x_dot(z1, tm)
+    z3 = xh - np.sqrt(3)/6*dt*x_dot(z2, tp).detach()
+    z4 = xh + np.sqrt(3)/6*dt*x_dot(z1, tm).detach()
     return 1/2*(x_dot(z3, tm)+x_dot(z4, tp))
