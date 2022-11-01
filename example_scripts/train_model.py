@@ -43,7 +43,7 @@ if __name__ == "__main__":
                              'data are estimated by the finite differences.')
     parser.add_argument('--integrator', type=str,
                         choices=[False, 'euler', 'rk4', 'midpoint', 'srk4'],
-                        default=False,
+                        default='midpoint',
                         help='Integrator used during training.')
     parser.add_argument('--F_timedependent', type=int, default=1,
                         choices=[0, 1],
@@ -135,8 +135,9 @@ if __name__ == "__main__":
         model, optimizer, metadict = load_dynamic_system_model(modelpath)
     else:
         if baseline == 1:
-            baseline_nn = BaselineNN(nstates, hidden_dim, F_timedependent,
-                                     F_statedependent)
+            baseline_nn = BaselineNN(
+                nstates, hidden_dim,
+                timedependent=F_timedependent, statedependent=True)
             model = DynamicSystemNN(nstates, baseline_nn)
         elif baseline == 2:
             external_port_filter_t = np.zeros(nstates)
@@ -145,7 +146,7 @@ if __name__ == "__main__":
                 nstates, hidden_dim, noutputs_x=nstates,
                 noutputs_t=1, external_port_filter_x=None,
                 external_port_filter_t=external_port_filter_t,
-                ttype=torch.float32)
+                ttype=ttype)
             model = DynamicSystemNN(nstates, baseline_nn)
         else:
             hamiltonian_nn = HamiltonianNN(nstates, hidden_dim)
@@ -170,9 +171,9 @@ if __name__ == "__main__":
 
     traindata = generate_dataset(
         pH_system, ntrajectories_train, t_sample, true_derivatives,
-        nsamples=ntrainingpoints)
+        nsamples=ntrainingpoints, noise_std=noise_std)
     valdata = generate_dataset(
-        pH_system, ntrajectories_val, t_sample, true_derivatives)
+        pH_system, ntrajectories_val, t_sample, true_derivatives, noise_std=noise_std)
 
     bestmodel, vloss = train(
         model,
