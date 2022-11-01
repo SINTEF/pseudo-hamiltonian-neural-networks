@@ -16,7 +16,7 @@ pip install porthamiltonians
 Alternatively, to get the latest updates not yet available on PyPi, you can clone this repository and install directly:
 
 ```
-git clone https://gitlab.sintef.no/Camilla.Sterud/port-hamiltonian-neural-networks.git
+git clone https://gitlab.sintef.no/hybrid-machine-learning/port-hamiltonian-neural-networks.git
 cd port-hamiltonian-neural-networks
 pip install -e porthamiltonians
 ```
