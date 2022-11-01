@@ -14,9 +14,11 @@ class BaseNN(torch.nn.Module):
     """
     Neural network with three hidden layers, where the first has
     Tanh-activation, the second has ReLU-activation and the third has
-    linear activation. The network can take either system states, or
-    time or both as input. Independently of whether the network uses
-    state and/or time, it can be called with both state and time::
+    linear activation. The network can take either system states or
+    time or both as input. If it is expected to take neither states nor
+    time as input, the network is replaced by trainable parameters.
+    Independently of whether the network uses state and/or time or neither,
+    it can be called with both state and time::
 
         pred = network(x=x, t=t)
 
@@ -37,33 +39,38 @@ class BaseNN(torch.nn.Module):
     """
 
     def __init__(self, nstates, noutputs, hidden_dim,
-                 timedependent, statedependent):
+                 timedependent, statedependent, ttype=torch.float32):
         super().__init__()
         self.nstates = nstates
         self.noutputs = noutputs
         self.hidden_dim = hidden_dim
         self.timedependent = timedependent
         self.statedependent = statedependent
-        input_dim = int(statedependent)*nstates + int(timedependent)
-        linear1 = nn.Linear(input_dim, hidden_dim)
-        linear2 = nn.Linear(hidden_dim, hidden_dim)
-        linear3 = nn.Linear(hidden_dim, noutputs)
+        if not statedependent and not timedependent:
+            self.model = nn.Parameter(torch.zeros(noutputs, dtype=ttype))
+        else:
+            input_dim = int(statedependent)*nstates + int(timedependent)
+            linear1 = nn.Linear(input_dim, hidden_dim)
+            linear2 = nn.Linear(hidden_dim, hidden_dim)
+            linear3 = nn.Linear(hidden_dim, noutputs)
 
-        for lin in [linear1, linear2, linear3]:
-            nn.init.orthogonal_(lin.weight)
+            for lin in [linear1, linear2, linear3]:
+                nn.init.orthogonal_(lin.weight)
 
-        self.model = nn.Sequential(
-            linear1,
-            nn.Tanh(),
-            linear2,
-            nn.ReLU(),
-            linear3,
-        )
+            self.model = nn.Sequential(
+                linear1,
+                nn.Tanh(),
+                linear2,
+                nn.ReLU(),
+                linear3,
+            )
 
-        if not statedependent:
+        if timedependent and not statedependent:
             self.forward = self._forward_without_state
-        elif not timedependent:
+        elif statedependent and not timedependent:
             self.forward = self._forward_without_time
+        elif not statedependent and not timedependent:
+            self.forward = self._forward_without_state_or_time
         else:
             self.forward = self._forward_with_state_and_time
 
@@ -76,15 +83,20 @@ class BaseNN(torch.nn.Module):
     def _forward_without_state(self, x=None, t=None):
         return self.model(t)
 
+    def _forward_without_state_or_time(self, x=None, t=None):
+        return self.model
+
 
 class BaselineNN(BaseNN):
     """
     Neural network for estimating the right hand side of a set of
     dynamic system equations with three hidden layers, where the first
     has Tanh-activation, the second has ReLU-activation and the third has
-    linear activation. The network can take either system states, or
-    time or both as input. Independently of whether the network uses
-    state and/or time, it can be called with both state and time::
+    linear activation. The network can take either system states or
+    time or both as input. If it is expected to take neither states nor
+    time as input, the network is replaced by trainable parameters.
+    Independently of whether the network uses state and/or time or neither,
+    it can be called with both state and time::
 
         pred = network(x=x, t=t)
 
@@ -110,7 +122,7 @@ class BaselineNN(BaseNN):
 
 class HamiltonianNN(BaseNN):
     """
-    Neural network for estimating a Hamiltonian function H(X)
+    Neural network for estimating a scalar function H(x),
     with three hidden layers, where the first has
     Tanh-activation, the second has ReLU-activation and the third has
     linear activation. The network takes system states as input, but
@@ -137,13 +149,14 @@ class ExternalPortNN(BaseNN):
     Neural network for estimating esternal ports of a port-Hamiltonian
     system with three hidden layers, where the first has
     Tanh-activation, the second has ReLU-activation and the third has
-    linear activation. The network can take either system states, or
+    linear activation. The network can take either system states or
     time or both as input. Independently of whether the network uses
     state and/or time, it can be called with both state and time::
 
         pred = network(x=x, t=t)
 
-    The output dimension of the network is always 1.
+    If neither time or state input is to be expected, the neural
+    network is replaced by trainable parameters.
 
     Parameters
     ----------
@@ -192,6 +205,9 @@ class ExternalPortNN(BaseNN):
     def _forward_without_state(self, x=None, t=None):
         return self.model(t)@self.external_port_filter
 
+    def _forward_without_state_or_time(self, x=None, t=None):
+        return self.model@self.external_port_filter
+
     def _format_external_port_filter(self, external_port_filter):
         if external_port_filter is None:
             assert self.noutputs == self.nstates, (
@@ -226,7 +242,7 @@ class ExternalPortNN(BaseNN):
             f'external_port_filter.shape == {external_port_filter.shape}, but '
             'external_port_filter must be a vector of length nstates or '
             'a matrix of shape (naffected_states x noutputs).')
-        return torch.tensor(external_port_filter, dtype=self.ttype).T
+        return external_port_filter.clone().type(self.ttype).detach().T
 
 
 class BaselineSplitNN(torch.nn.Module):
@@ -235,13 +251,13 @@ class BaselineSplitNN(torch.nn.Module):
     side of a set of dynamic system equations. The networks have
     three hidden layers, where the first has Tanh-activation, the
     second has ReLU-activation and the third has linear activation.
-    One network takes system states and one takes time as input.
+    One network takes system states and the other takes time as input.
     The output of the composition is the sum of the outputs of the
     two networks::
 
         pred = network(x, t) = network_x(x) + network_t(t)
 
-    Both netoworks are instasiated from the
+    Both networks are instantiated from the
     :py:class:`~.models.ExternalPortNN` class, allowing adjustment
     of the number and location of non-zero contributions from each
     network.
