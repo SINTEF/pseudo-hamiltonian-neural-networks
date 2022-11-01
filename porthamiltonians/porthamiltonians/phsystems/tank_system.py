@@ -119,6 +119,7 @@ class TankSystem(PortHamiltonianSystem):
         self.Hvec = np.concatenate((1/J, rho*g / A))
         super().__init__(nstates, structure_matrix=structure_matrix,
                          dissipation_matrix=dissipation, **kwargs)
+        self.H = self.H_tanksystem
         self.dH = self.dH_tanksystem
 
     def H_tanksystem(self, x, t=None):
