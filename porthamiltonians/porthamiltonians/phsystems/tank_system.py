@@ -31,7 +31,7 @@ class TankSystem(PortHamiltonianSystem):
     External interaction can be specified for every state, but the most
     physically interpretable setting is to only have external
     interaction for the states corresponding to the tanks, which can be
-    seen as volumnetric flows into or out of the tanks.
+    seen as volumetric flows into or out of the tanks.
 
     Each tank is assumed to have a uniform cross-section w.r.t. it's
     height.
@@ -42,7 +42,7 @@ class TankSystem(PortHamiltonianSystem):
     parameters
     ----------
         incidence_matrix : (N, N) ndarray, default None
-            Incidence matrix of the graph desctibin the tank system.
+            Incidence matrix of the graph describing the tank system.
             Corresponds to the B matrix.  Inferred from system_graph if
             system_graph is provided.
 
@@ -68,8 +68,8 @@ class TankSystem(PortHamiltonianSystem):
             through each pipe. If scalar, the same constant is
             used for all pipes.
         A : (ntanks,) ndarray or number, default 1.
-         Scalar ndarray of size (ntanks,) of tank cross-section areas.
-         If scalar, the same area is  used for all tanks.
+            Scalar ndarray of size (ntanks,) of tank cross-section areas.
+            If scalar, the same area is used for all tanks.
         rho : number, default 1.
             Positive scalar. Density of liquid.
         g : number, default 9.81

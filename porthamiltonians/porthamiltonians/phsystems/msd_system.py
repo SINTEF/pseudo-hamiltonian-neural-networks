@@ -9,7 +9,7 @@ __all__ = ['MassSpringDamperSystem', 'init_msdsystem',
 
 class MassSpringDamperSystem(PortHamiltonianSystem):
     """
-    Implements a general forced damped mass spring damper as a
+    Implements a general forced and damped mass-spring system as a
     port-Hamiltonian formulation::
 
            .
@@ -47,7 +47,7 @@ class MassSpringDamperSystem(PortHamiltonianSystem):
 
 def init_msdsystem():
     """
-    Initialize a standard mass spring damper system affected by a
+    Initialize a standard example of a damped mass-spring system affected by a
     sine force.
 
     Returns
@@ -67,7 +67,7 @@ def init_msdsystem():
 
 def initial_condition_radial(r_min, r_max):
     """
-    Create an initial consition sampler that draws samples uniformly
+    Creates an initial condition sampler that draws samples uniformly
     from the disk r_min <= x^Tx < r_max.
 
     Returns

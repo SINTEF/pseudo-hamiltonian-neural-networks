@@ -1,9 +1,9 @@
 """
-porthamiltonians is a package for simulating, controling and learning
-dynamic systems in general, and port-Hamiltonian systems in particular.
+porthamiltonians is a package for simulating, controlling and learning
+dynamical systems in general, and port-Hamiltonian systems in particular.
 porthamiltonians contains three subpackages:
 
-- :py:mod:`~.phsystems` with tools for simualtion
+- :py:mod:`~.phsystems` with tools for simulation
 
 - :py:mod:`~.phnns` with tools for constructing and training
   port-Hamiltoninan neural networks

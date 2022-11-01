@@ -44,7 +44,7 @@ def generate_dataset(pH_system, ntrajectories, t_sample,
         samples of the trajectory.
     references : list of porthamiltonian.control.Reference, default
         None
-            If the *pH_system* has a controller a list of ntrajectories
+            If the *pH_system* has a controller, a list of ntrajectories
             reference objects may be passed.
     ttype : torch type, default torch.float32
 
@@ -116,12 +116,13 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
     ----------
     model : DynamicSystemNN
     integrator : str or False
-        Specifies which solver to use during simulation. If False,
-        the problem is left to scipy's solve_ivp. If 'euler',
-        'midpoint', 'rk4' or 'srk4' the system is simulated with
-        the forward euler method, the implicit midpoint method,
-        the explicit Runge-Kutta 4 method or a symmetric fourth
-        order Runge-Kutta method, respectively.
+        Specifies how to evaluate the right-hand side of the
+        differential equation. If False or 'euler' is is evaluated
+        at (x_start, t_start).
+        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
+        such that the corresponding integration scheme is the implicit
+        midpoint method, the classic Runge-Kutta-4 method or a symmetric
+        fourth-order Runge-Kutta method, respectively.
     traindata : tuple
         ((x_start, x_end, t_start, t_end, dt, u), dxdt)
     optimizer : torch optimizer
@@ -202,7 +203,7 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
         model.train(False)
 
         if verbose:
-            print(f'\nEpoch {epoch}')
+            print(f'\nEpoch {epoch+1}')
             print(f'Training loss: {np.format_float_scientific(avg_loss, 2)}')
             delta = end - start
             print('Epoch training time:'
@@ -215,7 +216,8 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
                                             valdata_batched, loss_fn)
             end = datetime.datetime.now()
             if verbose:
-                print(f'Validation loss: {np.format_float_scientific(vloss, 2)}')
+                print('Validation loss: '
+                      f'{np.format_float_scientific(vloss, 2)}')
                 delta = end - start
                 print('Validation loss computed in'
                       f' {delta.seconds:d}.{int(delta.microseconds / 1e4):d}'
@@ -231,7 +233,7 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
             if early_stopping is not None:
                 if early_stopping(vloss):
                     if verbose:
-                        print(f'Early stopping at epoch {epoch}/{epochs}')
+                        print(f'Early stopping at epoch {epoch+1}/{epochs}')
                     break
         else:
             newbest = True
@@ -245,7 +247,7 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
                         ' ', '') + '.model')
             else:
                 best_path = os.path.join(store_best_dir, modelname)
-            trainingdetails['epochs'] = epoch
+            trainingdetails['epochs'] = epoch+1
             trainingdetails['val_loss'] = vloss
             trainingdetails['train_loss'] = avg_loss
             store_dynamic_system_model(best_path, model, optimizer,
@@ -266,12 +268,13 @@ def compute_validation_loss(model, integrator, valdata=None,
     ----------
     model : DynamicSystemNN
     integrator : str or False
-        Specifies which solver to use during simulation. If False,
-        the problem is left to scipy's solve_ivp. If 'euler',
-        'midpoint', 'rk4' or 'srk4' the system is simulated with
-        the forward euler method, the implicit midpoint method,
-        the explicit Runge-Kutta 4 method or a symmetric fourth
-        order Runge-Kutta method, respectively.
+        Specifies how to evaluate the right-hand side of the
+        differential equation. If False or 'euler' is is evaluated
+        at (x_start, t_start).
+        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
+        such that the corresponding integration scheme is the implicit
+        midpoint method, the classic Runge-Kutta-4 method or a symmetric
+        fourth-order Runge-Kutta method, respectively.
     valdata : tuple, default None
         ((x_start, x_end, t_start, t_end, dt, u), dxdt)
         Either valdata or valdata_batched must be provided.
@@ -343,12 +346,13 @@ def train_one_epoch(model, traindata_batched, loss_fn, optimizer, integrator,
     loss_fn : callable
     optimizer : torch optimizer
     integrator : str or False
-        Specifies which solver to use during simulation. If False,
-        the problem is left to scipy's solve_ivp. If 'euler',
-        'midpoint', 'rk4' or 'srk4' the system is simulated with
-        the forward euler method, the implicit midpoint method,
-        the explicit Runge-Kutta 4 method or a symmetric fourth
-        order Runge-Kutta method, respectively.
+        Specifies how to evaluate the right-hand side of the
+        differential equation. If False or 'euler' is is evaluated
+        at (x_start, t_start).
+        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
+        such that the corresponding integration scheme is the implicit
+        midpoint method, the classic Runge-Kutta-4 method or a symmetric
+        fourth-order Runge-Kutta method, respectively.
     l1_param_port : number
     l1_param_dissipation : number
 
@@ -366,8 +370,9 @@ def train_one_epoch(model, traindata_batched, loss_fn, optimizer, integrator,
             loss = loss_fn(dxdt_hat, dxdt)
             if (isinstance(model, PortHamiltonianNN)
                     and ((l1_param_port > 0) or (l1_param_dissipation > 0))):
-                loss += l1_loss_pHnn(model, l1_param_port, l1_param_dissipation,
-                                     input_tuple[0], input_tuple[2])
+                loss += l1_loss_pHnn(
+                    model, l1_param_port, l1_param_dissipation,
+                    input_tuple[0], input_tuple[2])
 
         loss.backward()
         optimizer.step()
@@ -399,7 +404,8 @@ def l1_loss_pHnn(pHnn_model, l1_param_port, l1_param_dissipation, x, t=None):
     penalty = 0
     if (isinstance(pHnn_model.external_port, nn.Module) and (l1_param_port > 0)
             and (not pHnn_model.external_port_provided)):
-        penalty += l1_param_port*torch.abs(pHnn_model.external_port(x, t)).mean()
+        penalty += l1_param_port*torch.abs(
+            pHnn_model.external_port(x, t)).mean()
     if (isinstance(pHnn_model.R, nn.Module) and (l1_param_dissipation > 0)
             and (not pHnn_model.R_provided)):
         penalty += l1_param_dissipation*torch.abs(pHnn_model.R(x)).mean()
@@ -452,7 +458,7 @@ class EarlyStopping():
         self.min_delta = min_delta
         self.counter = 0
         self.best_loss = np.inf
-        
+
     def __call__(self, val_loss):
         """
         Checks if *val_loss* is at least *self.min_delta* smaller
@@ -507,3 +513,4 @@ def store_dynamic_system_model(storepath, model, optimizer, **kwargs):
         store_phnn_model(storepath, model, optimizer, **kwargs)
     else:
         store_baseline_model(storepath, model, optimizer, **kwargs)
+        

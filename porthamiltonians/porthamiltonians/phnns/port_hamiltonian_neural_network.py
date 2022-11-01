@@ -15,18 +15,18 @@ class PortHamiltonianNN(DynamicSystemNN):
 
         dx/dt = (S(x) - R(x))*grad[H(x)] + F(x, t)
 
-    where x is the system state, S is the interconection matrix,
-    R is the dissipation matrix, H is the Hamiltonian of the system and
-    F is the external ports.
+    where x is the system state, S is the skew-symmetric interconnection
+    matrix, R is the positive semi-definite dissipation matrix, H is the
+    Hamiltonian of the system and F is the external ports.
     
     It is possible to provide function estimators like neural networks
     to model R, H and F. All estimators must subclass torch.nn.Module,
-    such that gradients can be recorded with pytorch.
+    such that gradients can be recorded with PyTorch.
 
     If R, H or F are known, they can be provided and used in favor of
     estimators. Note that R, H and F must be functions both taking as
     input and returning tensors, and that the gradients of H(x) must be
-    availble through autograd unless the true gradient is provided.
+    available through autograd unless the true gradient is provided.
 
 
     parameters
@@ -55,17 +55,17 @@ class PortHamiltonianNN(DynamicSystemNN):
             tensor of shape (nsamples, nstates).
 
         dissipation_true : (N, N) tensor or callable, default None
-            The known R matrix. Must either be a (nstates, nstates)
+            The known R matrix. Must either be an (nstates, nstates)
             tensor, or callable taking a tensor input of shape
             (nsamples, nstates) and returning a tensor of shape
             (nsamples, nstates, nstates). If dissipation_true is
             provided, dissipation_est will be ignored.
 
         external_port_true : callable, default None
-            The external ports affecting system. Callable taking two
+            The external ports affecting the system. Callable taking two
             tensors as input, x and t, of shape (nsamples, nstates),
-            (nsamples, 1), respectively and returning a tensor of shape
-            (nasamples, nstates). If external_port_true is provided,
+            (nsamples, 1) respectively, and returning a tensor of shape
+            (nsamples, nstates). If external_port_true is provided,
             external_port_est will be ignored.
 
         hamiltonian_est : callable, default None
@@ -150,7 +150,7 @@ class PortHamiltonianNN(DynamicSystemNN):
 
     def _structure_matrix(self, x):
         return to_tensor(self.structure_matrix, self.ttype)
-    
+
     def _hamiltonian_true(self, x):
         return self.hamiltonian_true(x).detach()
 
