@@ -119,10 +119,12 @@ def train(model, integrator, traindata, optimizer, valdata=None, epochs=1,
         Specifies how to evaluate the right-hand side of the
         differential equation. If False or 'euler' is is evaluated
         at (x_start, t_start).
-        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
-        such that the corresponding integration scheme is the implicit
-        midpoint method, the classic Runge-Kutta-4 method or a symmetric
-        fourth-order Runge-Kutta method, respectively.
+        If 'midpoint', 'rk4', 'srk4', 'cm4' or 'cs6', the right hand side
+        is evaluated such that the corresponding integration scheme is the
+        implicit midpoint method, the classic Runge-Kutta-4 method, a
+        symmetric fourth-order Runge-Kutta method, a different symmetric
+        fourth-order Runge-Kutta method or a symmetricsixth-order 
+        Runge-Kutta method, respectively.
     traindata : tuple
         ((x_start, x_end, t_start, t_end, dt, u), dxdt)
     optimizer : torch optimizer
@@ -271,10 +273,12 @@ def compute_validation_loss(model, integrator, valdata=None,
         Specifies how to evaluate the right-hand side of the
         differential equation. If False or 'euler' is is evaluated
         at (x_start, t_start).
-        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
-        such that the corresponding integration scheme is the implicit
-        midpoint method, the classic Runge-Kutta-4 method or a symmetric
-        fourth-order Runge-Kutta method, respectively.
+        If 'midpoint', 'rk4', 'srk4', 'cm4' or 'cs6', the right hand side
+        is evaluated such that the corresponding integration scheme is the
+        implicit midpoint method, the classic Runge-Kutta-4 method, a
+        symmetric fourth-order Runge-Kutta method, a different symmetric
+        fourth-order Runge-Kutta method or a symmetricsixth-order 
+        Runge-Kutta method, respectively.
     valdata : tuple, default None
         ((x_start, x_end, t_start, t_end, dt, u), dxdt)
         Either valdata or valdata_batched must be provided.
@@ -349,10 +353,12 @@ def train_one_epoch(model, traindata_batched, loss_fn, optimizer, integrator,
         Specifies how to evaluate the right-hand side of the
         differential equation. If False or 'euler' is is evaluated
         at (x_start, t_start).
-        If 'midpoint', 'rk4' or 'srk4' the right hand side is evaluated
-        such that the corresponding integration scheme is the implicit
-        midpoint method, the classic Runge-Kutta-4 method or a symmetric
-        fourth-order Runge-Kutta method, respectively.
+        If 'midpoint', 'rk4', 'srk4', 'cm4' or 'cs6', the right hand side
+        is evaluated such that the corresponding integration scheme is the
+        implicit midpoint method, the classic Runge-Kutta-4 method, a
+        symmetric fourth-order Runge-Kutta method, a different symmetric
+        fourth-order Runge-Kutta method or a symmetricsixth-order 
+        Runge-Kutta method, respectively.
     l1_param_port : number
     l1_param_dissipation : number
 

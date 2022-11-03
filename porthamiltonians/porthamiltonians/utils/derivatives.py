@@ -1,4 +1,3 @@
-
 import numpy as np
 
 __all__ = ['time_derivative']
@@ -17,8 +16,9 @@ def time_derivative(integrator, x_dot, x_start, x_end,
         *t_end* are used to compute the implicit midpoint
         estimate of the derivative. If 'rk4', *x_start*, *t_start*, *dt*
         are used to compute the classic Runge-Kutta-4 estimate.
-        If 'srk4', *x_start*, *x_end*, *t_start*, *dt* are used to
-        compute a symmetric 4th order Runge-Kutta estimate.
+        If 'srk4', 'cm4' or 'cs6', *x_start*, *x_end*, *t_start*, *dt*
+        are used to compute a symmetric 4th, 4th or 6th order Runge-Kutta
+        estimate.
     x_dot : callable
         Callable taking three arguments, x, t and u, returning the time
         derivative at the provided points.
@@ -56,7 +56,12 @@ def time_derivative(integrator, x_dot, x_start, x_end,
     elif integrator == 'srk4':
         return _discrete_time_derivative_srk4(x_dot, x_start, x_end,
                                               t_start, dt)
-
+    elif integrator == 'cm4':
+        return _discrete_time_derivative_cm4(x_dot, x_start, x_end,
+                                              t_start, dt)
+    elif integrator == 'cs6':
+        return _discrete_time_derivative_cs6(x_dot, x_start, x_end,
+                                              t_start, dt)
     else:
         raise ValueError(f'Unknown integrator {integrator}.')
 
@@ -82,3 +87,26 @@ def _discrete_time_derivative_srk4(x_dot, x1, x2, t1, dt):
     z3 = xh - np.sqrt(3)/6*dt*x_dot(z2, tp).detach()
     z4 = xh + np.sqrt(3)/6*dt*x_dot(z1, tm).detach()
     return 1/2*(x_dot(z3, tm)+x_dot(z4, tp))
+
+
+def _discrete_time_derivative_cm4(x_dot, x1, x2, t1, dt): # Cash and Moore's 4th order scheme
+    xh = (x1+x2)/2
+    th = t1 + 1/2*dt
+    t2 = t1 + dt
+    f1 = x_dot(x1, t1)
+    f2 = x_dot(x2, t2)
+    z = xh - dt/8*(f2-f1).detach()
+    return 1/6*(f1+f2)+2/3*x_dot(z, th)
+
+
+def _discrete_time_derivative_cs6(x_dot, x1, x2, t1, dt): # Cash and Singhal's 6th order scheme
+    t14 = t1 + 1/4*dt
+    t12 = t1 + 1/2*dt
+    t34 = t1 + 3/4*dt
+    t2 = t1 + dt
+    f1 = x_dot(x1, t1)
+    f2 = x_dot(x2, t2)
+    x14 = 27/32*x1 + 5/32*x2 + dt*(9/64*f1-3/64*f2).detach()
+    x34 = 5/32*x1 + 27/32*x2 + dt*(3/64*f1-9/64*f2).detach()
+    x12 = (x1+x2)/2 + 5/24*dt*(f2-f1) - 2/3*dt*(x_dot(x34,t34)-x_dot(x14,t14)).detach()
+    return 7/90*(f1+f2) + 16/45*(x_dot(x14,t14)+x_dot(x34,t34)) + 2/15*x_dot(x12,t12)
