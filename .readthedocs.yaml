@@ -7,10 +7,10 @@ build:
 
 python:
   install:
-    - requirements: porthamiltonians/docs/requirements.txt
+    - requirements: phlearn/docs/requirements.txt
     - method: pip
-      path: porthamiltonians
+      path: phlearn
 
 sphinx:
   fail_on_warning: true
-  configuration: porthamiltonians/docs/source/conf.py
+  configuration: phlearn/docs/source/conf.py
