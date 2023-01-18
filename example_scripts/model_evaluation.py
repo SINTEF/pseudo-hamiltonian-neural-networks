@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from porthamiltonians.phnns import load_dynamic_system_model, PortHamiltonianNN, BaselineSplitNN
-from porthamiltonians.phsystems import init_tanksystem, init_msdsystem
+from phlearn.phnns import load_dynamic_system_model, PseudoHamiltonianNN, BaselineSplitNN
+from phlearn.phsystems import init_tanksystem, init_msdsystem
 
 ttype = torch.float32
 torch.set_default_dtype(ttype)
@@ -65,14 +65,14 @@ if __name__ == "__main__":
         x0 = x_exact[0, :]
         x_phnn, _ = model.simulate_trajectory(False, t_sample, x0=x0)
 
-        if isinstance(model, PortHamiltonianNN):
-            if (not model.external_port_provided):
-                F_phnn = model.external_port(torch.tensor(x_phnn, dtype=ttype),
+        if isinstance(model, PseudoHamiltonianNN):
+            if (not model.external_forces_provided):
+                F_phnn = model.external_forces(torch.tensor(x_phnn, dtype=ttype),
                                                 torch.tensor(t_sample.reshape(nsamples, 1), dtype=ttype)).detach().numpy()
                 F_phnn -= F_phnn.mean(axis=0)
-                F_exact = pH_system.external_port(x_exact, t_sample)
-                df.loc[modelname, 'External port MSE'] = ((F_phnn - F_exact)**2).mean()
-                df.loc[modelname, 'External port MAE'] = np.abs(F_phnn - F_exact).mean()
+                F_exact = pH_system.external_forces(x_exact, t_sample)
+                df.loc[modelname, 'External force MSE'] = ((F_phnn - F_exact)**2).mean()
+                df.loc[modelname, 'External force MAE'] = np.abs(F_phnn - F_exact).mean()
             if (not model.dissipation_provided):
                 df.loc[modelname, 'R MSE'] = ((model.R(x_exact).detach().numpy() - pH_system.R(x_exact))**2).mean()
                 df.loc[modelname, 'R MAE'] = np.abs(model.R(x_exact).detach().numpy() - pH_system.R(x_exact)).mean()
@@ -100,9 +100,9 @@ if __name__ == "__main__":
             F_baseline = model.rhs_model.network_t(torch.tensor(x_phnn, dtype=ttype),
                                         torch.tensor(t_sample.reshape(nsamples, 1), dtype=ttype)).detach().numpy()
             F_baseline -= F_baseline.mean(axis=0)
-            F_exact = pH_system.external_port(x_exact, t_sample)
-            df.loc[modelname, 'External port MSE'] = ((F_baseline - F_exact)**2).mean()
-            df.loc[modelname, 'External port MAE'] = np.abs(F_baseline - F_exact).mean()
+            F_exact = pH_system.external_forces(x_exact, t_sample)
+            df.loc[modelname, 'External force MSE'] = ((F_baseline - F_exact)**2).mean()
+            df.loc[modelname, 'External force MAE'] = np.abs(F_baseline - F_exact).mean()
 
         if system == 'tank':
             df.loc[modelname, 'Tanks MSE'] = ((pH_system.tanklevels(x_exact) - pH_system.tanklevels(x_phnn))**2).mean()
@@ -120,14 +120,14 @@ if __name__ == "__main__":
             x0 = x_exact[0, :]
             x_phnn, _ = model.simulate_trajectory(False, t_sample, x0=x0)
 
-            if isinstance(model, PortHamiltonianNN):
-                if (not model.external_port_provided):
-                    F_phnn = model.external_port(torch.tensor(x_phnn, dtype=ttype),
+            if isinstance(model, PseudoHamiltonianNN):
+                if (not model.external_forces_provided):
+                    F_phnn = model.external_forces(torch.tensor(x_phnn, dtype=ttype),
                                                  torch.tensor(t_sample.reshape(nsamples, 1), dtype=ttype)).detach().numpy()
                     F_phnn -= F_phnn.mean(axis=0)
-                    F_exact = pH_system.external_port(x_exact, t_sample)
-                    df.loc[modelname, 'External port MSE'] += ((F_phnn - F_exact)**2).mean()
-                    df.loc[modelname, 'External port MAE'] += np.abs(F_phnn - F_exact).mean()
+                    F_exact = pH_system.external_forces(x_exact, t_sample)
+                    df.loc[modelname, 'External force MSE'] += ((F_phnn - F_exact)**2).mean()
+                    df.loc[modelname, 'External force MAE'] += np.abs(F_phnn - F_exact).mean()
                 if (not model.dissipation_provided):
                     df.loc[modelname, 'R MSE'] += ((model.R(x_exact).detach().numpy() - pH_system.R(x_exact))**2).mean()
                     df.loc[modelname, 'R MAE'] += np.abs(model.R(x_exact).detach().numpy() - pH_system.R(x_exact)).mean()
@@ -155,9 +155,9 @@ if __name__ == "__main__":
                 F_baseline = model.rhs_model.network_t(torch.tensor(x_phnn, dtype=ttype),
                                             torch.tensor(t_sample.reshape(nsamples, 1), dtype=ttype)).detach().numpy()
                 F_baseline -= F_baseline.mean(axis=0)
-                F_exact = pH_system.external_port(x_exact, t_sample)
-                df.loc[modelname, 'External port MSE'] += ((F_baseline - F_exact)**2).mean()
-                df.loc[modelname, 'External port MAE'] += np.abs(F_baseline - F_exact).mean()
+                F_exact = pH_system.external_forces(x_exact, t_sample)
+                df.loc[modelname, 'External force MSE'] += ((F_baseline - F_exact)**2).mean()
+                df.loc[modelname, 'External force MAE'] += np.abs(F_baseline - F_exact).mean()
 
             if system == 'tank':
                 df.loc[modelname, 'Tanks MSE'] += ((pH_system.tanklevels(x_exact) - pH_system.tanklevels(x_phnn))**2).mean()

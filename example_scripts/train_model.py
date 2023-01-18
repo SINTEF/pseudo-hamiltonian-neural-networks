@@ -4,10 +4,10 @@ import argparse
 import numpy as np
 import torch
 
-from porthamiltonians.phsystems import init_tanksystem, init_msdsystem
-from porthamiltonians.phnns import PortHamiltonianNN, DynamicSystemNN, load_dynamic_system_model
-from porthamiltonians.phnns import R_estimator, BaselineNN, BaselineSplitNN, HamiltonianNN, ExternalPortNN
-from porthamiltonians.phnns import npoints_to_ntrajectories_tsample, train, generate_dataset
+from phlearn.phsystems import init_tanksystem, init_msdsystem
+from phlearn.phnns import PseudoHamiltonianNN, DynamicSystemNN, load_dynamic_system_model
+from phlearn.phnns import R_estimator, BaselineNN, BaselineSplitNN, HamiltonianNN, ExternalForcesNN
+from phlearn.phnns import npoints_to_ntrajectories_tsample, train, generate_dataset
 
 ttype = torch.float32
 torch.set_default_dtype(ttype)
@@ -47,11 +47,11 @@ if __name__ == "__main__":
                         help='Integrator used during training.')
     parser.add_argument('--F_timedependent', type=int, default=1,
                         choices=[0, 1],
-                        help='If 1, make external port NN (or baseline NN) '
+                        help='If 1, make external force NN (or baseline NN) '
                              'depend on time.')
     parser.add_argument('--F_statedependent', type=int, default=1,
                         choices=[0, 1],
-                        help='If 1, make external port NN (or baseline NN) '
+                        help='If 1, make external force NN (or baseline NN) '
                              'depend on state.')
     parser.add_argument('--hidden_dim', type=int, default=100,
                         help='Hidden dimension of fully connected neural '
@@ -62,8 +62,8 @@ if __name__ == "__main__":
                         help='Batch size used in training.')
     parser.add_argument('--epochs', type=int, default=100,
                         help='Number of training epochs.')
-    parser.add_argument('--l1_param_port', type=float, default=0.,
-                        help='L1 penalty parameter of external port estimate.')
+    parser.add_argument('--l1_param_forces', type=float, default=0.,
+                        help='L1 penalty parameter of external force estimate.')
     parser.add_argument('--l1_param_dissipation', type=float, default=0.,
                         help='L1 penalty parameter of dissipation estimate.')
     parser.add_argument('--early_stopping_patience', type=int,
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     learning_rate = args.learning_rate
     batch_size = args.batch_size
     epochs = args.epochs
-    l1_param_port = args.l1_param_port
+    l1_param_forces = args.l1_param_forces
     l1_param_dissipation = args.l1_param_dissipation
     shuffle = args.shuffle
     early_stopping_patience = args.early_stopping_patience
@@ -140,32 +140,32 @@ if __name__ == "__main__":
                 timedependent=F_timedependent, statedependent=True)
             model = DynamicSystemNN(nstates, baseline_nn)
         elif baseline == 2:
-            external_port_filter_t = np.zeros(nstates)
-            external_port_filter_t[-1] = 1
+            external_forces_filter_t = np.zeros(nstates)
+            external_forces_filter_t[-1] = 1
             baseline_nn = BaselineSplitNN(
                 nstates, hidden_dim, noutputs_x=nstates,
-                noutputs_t=1, external_port_filter_x=None,
-                external_port_filter_t=external_port_filter_t,
+                noutputs_t=1, external_forces_filter_x=None,
+                external_forces_filter_t=external_forces_filter_t,
                 ttype=ttype)
             model = DynamicSystemNN(nstates, baseline_nn)
         else:
             hamiltonian_nn = HamiltonianNN(nstates, hidden_dim)
-            external_port_filter = np.zeros(nstates)
-            external_port_filter[-1] = 1
-            ext_port_nn = ExternalPortNN(
+            external_forces_filter = np.zeros(nstates)
+            external_forces_filter[-1] = 1
+            ext_forces_nn = ExternalForcesNN(
                 nstates, 1, hidden_dim=hidden_dim,
                 timedependent=F_timedependent,
                 statedependent=F_statedependent,
-                external_port_filter=external_port_filter)
+                external_forces_filter=external_forces_filter)
 
             r_est = R_estimator(damped_states)
 
-            model = PortHamiltonianNN(
+            model = PseudoHamiltonianNN(
                 nstates,
                 pH_system.structure_matrix,
                 hamiltonian_est=hamiltonian_nn,
                 dissipation_est=r_est,
-                external_port_est=ext_port_nn)
+                external_forces_est=ext_forces_nn)
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
                                      weight_decay=1e-4)
 
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         epochs=epochs,
         batch_size=batch_size,
         shuffle=shuffle,
-        l1_param_port=l1_param_port,
+        l1_param_forces=l1_param_forces,
         l1_param_dissipation=l1_param_dissipation,
         loss_fn=torch.nn.MSELoss(),
         verbose=verbose,

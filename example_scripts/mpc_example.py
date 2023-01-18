@@ -4,9 +4,9 @@ import casadi
 import matplotlib.pyplot as plt
 import numpy as np
 
-from porthamiltonians.phsystems import init_tanksystem
-from porthamiltonians.control import StepReference, PortHamiltonianMPC
-from porthamiltonians.phnns import load_dynamic_system_model
+from phlearn.phsystems import init_tanksystem
+from phlearn.control import StepReference, PseudoHamiltonianMPC
+from phlearn.phnns import load_dynamic_system_model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -26,14 +26,14 @@ if __name__ == "__main__":
             dH = None
             R = None
             baseline = pH_system.rhs_model
-            external_port = None
+            external_forces = None
         else:
             S = pH_system.structure_matrix.copy()
             H = pH_system.hamiltonian
             dH = None
             R = pH_system.R
             baseline = None
-            external_port = pH_system.external_port
+            external_forces = pH_system.external_forces
         npipes = 5
         ntanks = 4
     else:
@@ -47,17 +47,17 @@ if __name__ == "__main__":
         npipes = pH_system.npipes
         ntanks = pH_system.ntanks
         R = pH_system.dissipation_matrix
-        external_port = pH_system.external_port
+        external_forces = pH_system.external_forces
 
-    control_port_filter = np.zeros((pH_system.nstates,))
-    control_port_filter[5] = 1
+    control_forces_filter = np.zeros((pH_system.nstates,))
+    control_forces_filter[5] = 1
     control_reference = StepReference(0, 1, step_interval=0.75, seed=seed)
 
-    mpc = PortHamiltonianMPC(control_port_filter,
+    mpc = PseudoHamiltonianMPC(control_forces_filter,
                              S=S,
                              dH=dH,
                              H=H,
-                             F=external_port,
+                             F=external_forces,
                              R=R,
                              baseline=baseline,
                              state_names=[f'flow_{i+1}' for i in range(npipes)] + [f'level_{i+1}' for i in range(ntanks)],
