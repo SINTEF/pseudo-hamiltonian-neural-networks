@@ -17,8 +17,8 @@ Alternatively, to get the latest updates not yet available on PyPi, you can clon
 
 ```
 git clone https://github.com/SINTEF/pseudo-Hamiltonian-neural-networks.git
-cd phlearn
-pip install -e .
+cd pseudo-Hamiltonian-neural-networks
+pip install -e phlearn
 ```
 
 
