@@ -1,6 +1,6 @@
 
 ==========================================
-Welcome to phlearn' documentation
+Welcome to phlearn's documentation
 ==========================================
 
 phlearn is a python package for modelling pseudo-Hamiltonian systems with neural networks as decribed in `(Eidnes et al. 2022) <https://arxiv.org/pdf/2206.02660.pdf>`_.
