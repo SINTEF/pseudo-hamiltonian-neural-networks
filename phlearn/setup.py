@@ -8,7 +8,7 @@ def read(fname):
 
 setuptools.setup(
     name='phlearn',
-    version='1.1.0',
+    version='1.0.0',
     author='Sølve Eidnes',
     author_email='solve.eidnes@sintef.no',
     description=('A package for simulating and learning pseudo-Hamiltonian systems.'
