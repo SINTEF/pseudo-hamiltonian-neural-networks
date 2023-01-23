@@ -1,4 +1,4 @@
-# pseudo-Hamiltonian neural networks
+# Pseudo-Hamiltonian neural networks
 
 This repository contains the package phlearn for modelling pseudo-Hamiltonian systems with neural networks as described in [(Eidnes et al. 2022)](https://arxiv.org/pdf/2206.02660.pdf) and example scripts for training and simulation.
 
