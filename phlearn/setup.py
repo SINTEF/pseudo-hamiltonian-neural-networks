@@ -28,7 +28,6 @@ setuptools.setup(
         'torchaudio',
         'torchvision',
         'scipy',
-        'casadi',
-        'do_mpc'
     ],
+    extras_require={'control': ['casadi', 'do_mpc']},
 )

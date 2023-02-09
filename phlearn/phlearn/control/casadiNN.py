@@ -1,5 +1,9 @@
-from casadi import *
-import casadi.tools
+try:
+    from casadi import *
+    import casadi.tools
+except ModuleNotFoundError:
+    raise ModuleNotFoundError("To use the phlearn.control module install via 'pip install phlearn[control]' ")
+
 
 
 class CasadiFCNN:
