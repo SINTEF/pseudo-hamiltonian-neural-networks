@@ -189,15 +189,27 @@ class PseudoHamiltonianSystem:
 
         S = self.S(x)
         R = self.R(x)
-        dH = self.dH(x)
+        dH = self.dH(x.T).T
+        
         if (len(S.shape) == 3) or (len(R.shape) == 3):
             dynamics = np.matmul(S - R, np.atleast_3d(dH)).reshape(
                 x.shape
             ) + self.external_forces(x, t)
         else:
-            dynamics = dH @ (S.T - R.T) + self.external_forces(x, t)
+            def F(x, t):
+                """Temporary wrapper function for external force to allow user defined
+                force that takes x of shape (nstates, 1) and t as a float.
+                Putting this here as I don't know how this would affect the
+                above logical block. TODO this is creating a ragged array from
+                list of lists and needs fixed."""
+                return np.array([Fxy for Fxy in map(self.external_forces, x, t)])
+            
+            dynamics = dH @ (S.T - R.T) + F(x, t)
+            # dynamics = dH @ (S.T - R.T) + self.external_forces(x, t)
+            
         if u is not None:
             dynamics += u
+
         return dynamics
 
     def sample_trajectory(self, t, x0=None, noise_std=0, reference=None):
