@@ -1,5 +1,6 @@
 
 import torch
+import numpy as np
 
 from .dynamic_system_neural_network import DynamicSystemNN
 from .models import HamiltonianNN, ExternalForcesNN, R_NN, R_estimator
@@ -88,7 +89,7 @@ class PseudoHamiltonianNN(DynamicSystemNN):
 
     def __init__(self,
                  nstates,
-                 structure_matrix,
+                 structure_matrix=None,
                  hamiltonian_true=None,
                  grad_hamiltonian_true=None,
                  dissipation_true=None,
@@ -98,6 +99,20 @@ class PseudoHamiltonianNN(DynamicSystemNN):
                  external_forces_est=None,
                  **kwargs):
         super().__init__(nstates, **kwargs)
+        
+        if structure_matrix is None:
+            if nstates % 2 == 1:
+                raise Exception(
+                    "nstates must be even when structure_matrix not provided"
+                )
+            npos = nstates // 2
+            structure_matrix = np.block(
+                [
+                    [np.zeros([npos, npos]), np.eye(npos)],
+                    [-np.eye(npos), np.zeros([npos, npos])],
+                ]
+            )
+            
         self.S = None
         self.hamiltonian = None
         self.external_forces = None
@@ -106,12 +121,14 @@ class PseudoHamiltonianNN(DynamicSystemNN):
         self.grad_hamiltonian_provided = False
         self.external_forces_provided = False
         self.dissipation_provided = False
+        self.nstates = nstates
         self.structure_matrix = structure_matrix
         self.hamiltonian_true = hamiltonian_true
         self.grad_hamiltonian_true = grad_hamiltonian_true
         self.dissipation_true = dissipation_true
         self.external_forces_true = external_forces_true
 
+        
         if not callable(structure_matrix):
             self.S = self._structure_matrix
         else:
@@ -139,12 +156,17 @@ class PseudoHamiltonianNN(DynamicSystemNN):
             self.dH = self._grad_hamiltonian_true
             self.grad_hamiltonian_provided = True
         else:
-            self.hamiltonian = hamiltonian_est
+            if hamiltonian_est is not None:
+                self.hamiltonian = hamiltonian_est
+            else:
+                self.hamiltonian = HamiltonianNN(self.nstates)
             self.dH = self._dH_hamiltonian_est
 
         if external_forces_true is not None:
             self.external_forces = self._external_forces_true
             self.external_forces_provided = True
+        elif external_forces_true is None and external_forces_est is None:
+            self.external_forces = lambda x,t: 0
         else:
             self.external_forces = external_forces_est
 
@@ -186,6 +208,7 @@ class PseudoHamiltonianNN(DynamicSystemNN):
         S = self.S(x)
         R = self.R(x)
         dH = self.dH(x)
+        
         if (len(S.shape) == 3) or (len(R.shape) == 3):
             dynamics = (torch.matmul(S - R, torch.atleast_3d(dH)
                                      ).reshape(x.shape)

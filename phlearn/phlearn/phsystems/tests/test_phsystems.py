@@ -11,8 +11,10 @@ import torch
 
 
 N_STATES = 10
+N_TIMESTEPS = 100
 
 X_RAND = np.random.rand(N_STATES)
+T_AXIS = np.linspace(0,10, N_TIMESTEPS)
 EXTERNAL_FORCE = np.random.rand(N_STATES)
 DISSIPATION_MATRIX = np.random.rand(N_STATES, N_STATES)
 DISSIPATION_MATRIX = DISSIPATION_MATRIX + DISSIPATION_MATRIX.T
@@ -81,7 +83,7 @@ def test_x_dot():
         **psh_kwargs
     )
     x_dot = dH(X_RAND) @ (STRUCTURE_MATRIX.T - DISSIPATION_MATRIX.T) + EXTERNAL_FORCE
-    assert np.allclose(phs.x_dot(X_RAND, 0), x_dot), "x_dot() returns incorrect ODE"
+    assert np.allclose(phs.x_dot(X_RAND, T_AXIS), x_dot), "x_dot() returns incorrect ODE"
 
 
 def test_sample_trajectory_on_const_ode():

@@ -1,6 +1,6 @@
-
 import torch
 import torch.nn as nn
+import numpy as np
 
 from .dynamic_system_neural_network import DynamicSystemNN
 
@@ -114,8 +114,8 @@ class BaselineNN(BaseNN):
         If True, state input is expected.
 
     """
-    def __init__(self, nstates, hidden_dim, timedependent,
-                 statedependent):
+    def __init__(self, nstates, hidden_dim, timedependent=True,
+                 statedependent=True):
         super().__init__(nstates, nstates, hidden_dim,
                          timedependent, statedependent)
 
@@ -140,7 +140,7 @@ class HamiltonianNN(BaseNN):
         Dimension of hidden layers.
 
     """
-    def __init__(self, nstates, hidden_dim):
+    def __init__(self, nstates, hidden_dim=100):
         super().__init__(nstates, 1, hidden_dim, False, True)
 
 
@@ -215,6 +215,9 @@ class ExternalForcesNN(BaseNN):
                 'not allowed when external_forces_filter is not provided.')
             return torch.eye(self.noutputs, dtype=self.ttype)
 
+        if isinstance(external_forces_filter, (list, tuple)):
+            external_forces_filter = np.array(external_forces_filter)
+        
         if not isinstance(external_forces_filter, torch.Tensor):
             external_forces_filter = torch.tensor(external_forces_filter > 0)
         external_forces_filter = external_forces_filter.int()

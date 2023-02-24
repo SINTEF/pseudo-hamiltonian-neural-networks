@@ -88,7 +88,7 @@ class DynamicSystemNN(torch.nn.Module):
 
         return time_derivative(integrator, self.x_dot, *args, **kwargs)
 
-    def simulate_trajectory(self, integrator, t_sample, x0=None,
+    def simulate_trajectory(self, t_sample, integrator=False, x0=None,
                             noise_std=0., reference=None):
         """
         Simulate a trajectory using the rhs_model and sample at times
