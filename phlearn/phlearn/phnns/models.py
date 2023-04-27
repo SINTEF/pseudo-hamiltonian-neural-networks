@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
 from .dynamic_system_neural_network import DynamicSystemNN
 
 
 __all__ = ['BaseNN', 'BaselineNN', 'BaselineSplitNN', 'HamiltonianNN',
-           'ExternalForcesNN', 'R_NN', 'R_estimator', 'load_baseline_model',
-           'store_baseline_model']
+           'ExternalForcesNN', 'R_NN', 'R_estimator',
+           'PDEBaseNN', 'PDEBaselineNN', 'PDEIntegralNN', 'PDEExternalForcesNN',
+           'PDEBaselineSplitNN', 'A_estimator', 'S_estimator',
+           'load_baseline_model', 'store_baseline_model']
 
 
 class BaseNN(torch.nn.Module):
@@ -146,7 +147,7 @@ class HamiltonianNN(BaseNN):
 
 class ExternalForcesNN(BaseNN):
     """
-    Neural network for estimating esternal ports of a pseudo-Hamiltonian
+    Neural network for estimating external forces of a pseudo-Hamiltonian
     system with three hidden layers, where the first has
     Tanh-activation, the second has ReLU-activation and the third has
     linear activation. The network can take either system states or
@@ -163,7 +164,7 @@ class ExternalForcesNN(BaseNN):
     nstates : int
         Number of states in a potential state input.
     noutputs : int
-        Number of external ports to estimate.
+        Number of external forces to estimate.
     timedependent : bool
         If True, time input is expected.
     statedependent : bool
@@ -172,7 +173,7 @@ class ExternalForcesNN(BaseNN):
         If None, *noutputs* == *nstates* must be true. In this case,
         one external force is estimated for each state. If
         *noutputs* != *nstates*, *external_forces_filter* must decribe
-        which states external ports should be estimated for. Either,
+        which states external forces should be estimated for. Either,
         *external_forces_filter* must be a 1d liststructure of length
         nstates filled with 0 and 1, where 1 indicates that an external
         force should be estimated for state corresponding to that index.
@@ -406,6 +407,313 @@ class R_estimator(torch.nn.Module):
         return self.rs.detach().numpy()
 
 
+class PeriodicPadding(nn.Module):
+    def __init__(self, d):
+        super(PeriodicPadding, self).__init__()
+        self.d = d
+    def forward(self, x):
+        return torch.cat([x[..., -self.d:], x, x[..., :self.d]], dim=-1)
+    
+
+class Summation(nn.Module):
+    def __init__(self):
+        super(Summation, self).__init__()
+    def forward(self, x):
+        axis = tuple(range(1, np.ndim(x)))
+        return x.sum(axis=axis, keepdims=True)
+
+
+class PDEBaseNN(torch.nn.Module):
+    """
+    Description to be added
+    
+    """
+
+    def __init__(self, nstates, noutputs, hidden_dim,
+                 timedependent, statedependent, spacedependent=False, ttype=torch.float32):
+        super().__init__()
+        self.nstates = nstates
+        self.noutputs = noutputs
+        self.hidden_dim = hidden_dim
+        self.timedependent = timedependent
+        self.statedependent = statedependent
+        self.spacedependent = spacedependent
+        if not statedependent and not timedependent:
+            input_dim = 1
+            linear1 = nn.Linear(input_dim, hidden_dim)
+            linear2 = nn.Linear(hidden_dim, hidden_dim)
+            linear3 = nn.Linear(hidden_dim, noutputs)
+
+            self.model = nn.Sequential(
+                linear1,
+                nn.Tanh(),
+                linear2,
+                nn.Tanh(),
+                linear3,
+            )
+        else:
+            input_dim = 1
+            pad = PeriodicPadding(d=1)
+            conv1 = nn.Conv1d(input_dim, hidden_dim, kernel_size=3)
+            conv2 = nn.Conv1d(hidden_dim, hidden_dim, kernel_size=1)
+            conv3 = nn.Conv1d(hidden_dim, hidden_dim, kernel_size=1, bias=None)
+            summation = Summation()
+
+            self.model = nn.Sequential(
+                pad,
+                conv1,
+                nn.Tanh(),
+                conv2,
+                nn.Tanh(),
+                conv3,
+                summation,
+            )
+
+        if timedependent and spacedependent and statedependent:
+            self.forward = self._forward_with_state_and_time_and_space
+        elif timedependent and spacedependent and not statedependent:
+            self.forward = self._forward_with_time_and_space
+        elif timedependent and not spacedependent and statedependent:
+            self.forward = self._forward_with_state_and_time
+        elif not timedependent and spacedependent and statedependent:
+            self.forward = self._forward_with_state_and_space
+        elif timedependent and not spacedependent and not statedependent:
+            self.forward = self._forward_with_time
+        elif spacedependent and not timedependent and not statedependent:
+            self.forward = self._forward_with_space
+        elif statedependent and not timedependent and not spacedependent:
+            self.forward = self._forward_with_state
+        else:
+            self.forward = self._forward_without_state_or_time_nor_space
+
+    def _forward_with_state_and_time_and_space(self, x=None, t=None, xspatial=None):
+        xsbasis = torch.cat([torch.sin(2*torch.pi/self.period*xspatial),
+                            torch.cos(2*torch.pi/self.period*xspatial)], axis=-2)
+        ts = t.repeat_interleave(x.shape[-1], dim=-1)
+        return self.model(torch.cat([x, xsbasis, ts], dim=-2))
+        
+    def _forward_with_time_and_space(self, x=None, t=None, xspatial=None):
+        xsbasis = torch.cat([torch.sin(2*torch.pi/self.period*xspatial),
+                            torch.cos(2*torch.pi/self.period*xspatial)], axis=-2)
+        ts = t.repeat_interleave(x.shape[-1], dim=-1)
+        return self.model(torch.cat([xsbasis, ts], dim=-2))
+        
+    def _forward_with_state_and_time(self, x=None, t=None, xspatial=None):
+        ts = t.repeat_interleave(x.shape[-1], dim=-1)
+        return self.model(torch.cat([x, ts], dim=-2))
+    
+    def _forward_with_state_and_space(self, x=None, t=None, xspatial=None):
+        xsbasis = torch.cat([torch.sin(2*torch.pi/self.period*xspatial),
+                            torch.cos(2*torch.pi/self.period*xspatial)], axis=-2)
+        return self.model(torch.cat([x, xsbasis], dim=-2))
+
+    def _forward_with_time(self, x=None, t=None, xspatial=None):
+        return self.model(t)
+
+    def _forward_with_space(self, x=None, t=None, xspatial=None):
+        xsbasis = torch.cat([torch.sin(2*torch.pi/self.period*xspatial),
+                            torch.cos(2*torch.pi/self.period*xspatial)], axis = -2)
+        return self.model(xsbasis)
+
+    def _forward_with_state(self, x=None, t=None, xspatial=None):
+        return self.model(x)
+
+    def _forward_without_state_or_time_nor_space(self, x=None, t=None, xspatial=None):
+        return self.model
+
+
+class PDEBaselineNN(PDEBaseNN):
+    """
+    Description to be added
+
+    """
+
+    def __init__(self, nstates, hidden_dim=100, timedependent=False,
+                 statedependent=True, spacedependent=False,
+                 period=20, number_of_intermediate_outputs=4):
+        noutputs = 1
+        super().__init__(nstates, noutputs, hidden_dim, 
+                         timedependent, statedependent, spacedependent=spacedependent)
+        self.period = period
+        self.number_of_intermediate_outputs = number_of_intermediate_outputs
+        input_dim = int(statedependent) + int(timedependent) + 2*int(spacedependent)
+        pad = PeriodicPadding(d=2)
+        hidden_dim_pre = 20
+        dnn_pre = nn.Sequential(
+            nn.Conv1d(input_dim, hidden_dim_pre, kernel_size=1),
+            nn.Tanh(),
+            nn.Conv1d(hidden_dim_pre, hidden_dim_pre, kernel_size=1),
+            nn.Tanh(),
+            nn.Conv1d(hidden_dim_pre, hidden_dim_pre, kernel_size=1),
+            nn.Tanh(),
+            nn.Conv1d(hidden_dim_pre, hidden_dim_pre, kernel_size=1),
+            nn.Tanh(),
+            nn.Conv1d(hidden_dim_pre, number_of_intermediate_outputs*input_dim, kernel_size=1),
+        )
+
+        conv1 = nn.Conv1d(number_of_intermediate_outputs*input_dim, hidden_dim, kernel_size=5)
+        conv2 = nn.Conv1d(hidden_dim, hidden_dim, kernel_size=1)
+        conv3 = nn.Conv1d(hidden_dim, noutputs, kernel_size=1, bias=None)
+
+        self.model = nn.Sequential(
+            pad,
+            dnn_pre,
+            conv1,
+            nn.Tanh(),
+            conv2,
+            nn.Tanh(),
+            conv3,
+        )
+
+
+class PDEIntegralNN(PDEBaseNN):
+    """
+    Neural network for ...
+
+    """
+    def __init__(self, nstates, hidden_dim=100):
+        super().__init__(nstates, 1, hidden_dim, False, True, False)
+
+
+class PDEExternalForcesNN(PDEBaseNN):
+    """
+    Neural network for ...
+
+    """
+
+    def __init__(self, nstates, hidden_dim=100, timedependent=False, spacedependent=True,
+                 statedependent=False, period=20, ttype=torch.float32):
+        noutputs = 1
+        super().__init__(nstates, noutputs, hidden_dim, 
+                         timedependent, statedependent, spacedependent=spacedependent)
+        self.nstates = nstates
+        self.noutputs = noutputs
+        self.hidden_dim = hidden_dim
+        self.spacedependent = spacedependent
+        self.timedependent = timedependent
+        self.statedependent = statedependent
+        self.period = period
+        self.ttype = ttype
+
+        if not statedependent and not timedependent and not spacedependent:
+            self.model = nn.Parameter(torch.tensor([0.], dtype=ttype))
+        else:
+            input_dim = int(statedependent) + int(timedependent) + 2*int(spacedependent)
+            conv1 = nn.Conv1d(input_dim, hidden_dim, kernel_size=1)
+            conv2 = nn.Conv1d(hidden_dim, hidden_dim, kernel_size=1)
+            conv3 = nn.Conv1d(hidden_dim, noutputs, kernel_size=1)
+
+            self.model = nn.Sequential(
+                conv1,
+                nn.Tanh(),
+                conv2,
+                nn.Tanh(),
+                conv3,
+            )
+
+            self.input_dim = input_dim
+
+
+class PDEBaselineSplitNN(torch.nn.Module):
+    """
+    A model composed of a PDEBaselineNN model only depending on the
+    state variables and an PDEExternalForcesNN model that can depend
+    on space and/or time variables.
+
+    """
+    def __init__(self, nstates, hidden_dim=100, timedependent=False,
+                 statedependent=True, spacedependent=False,
+                 period=20, number_of_intermediate_outputs=4):
+        super().__init__()
+        self.nstates = nstates
+        self.hidden_dim = hidden_dim
+        self.timedependent = timedependent
+        self.statedependent = statedependent
+        self.spacedependent = spacedependent
+        self.period = period
+        self.number_of_intermediate_outputs = number_of_intermediate_outputs
+        self.split = True
+        self.baseline_nn = PDEBaselineNN(
+            nstates, hidden_dim, False, True, False,
+            number_of_intermediate_outputs=number_of_intermediate_outputs)
+        self.external_forces = PDEExternalForcesNN(
+            nstates, hidden_dim,
+            timedependent, spacedependent, False,
+            period)
+
+    def forward(self, x, t, xspatial):
+        return self.baseline_nn(x, t, xspatial) + self.external_forces(x, t, xspatial)
+
+
+class A_estimator(torch.nn.Module):
+    '''
+    Creates an estimator of a symmetric convolution operator to apply to
+    the left-hand side of the PDE system or the integral V.
+
+    Parameters
+    ----------
+    kernel_size : int
+    ttype : torch type, default torch.float32
+
+    '''
+
+    def __init__(self, kernel_size=3, ttype=torch.float32):
+        super().__init__()
+
+        self.ttype = ttype
+        self.kernel_size = kernel_size
+        d = int((kernel_size-1)/2)
+        self.ls = torch.nn.Parameter(torch.zeros(d, dtype=self.ttype), requires_grad=True)
+
+    def forward(self, x=None):
+        """
+        Returns
+        -------
+        (N, N) tensor
+            Damping matrix
+        """
+        if self.kernel_size == 0:
+            return torch.tensor([0], dtype=self.ttype).reshape(1,1,1)
+        else:
+            return torch.concat([self.ls,torch.tensor([1], dtype=self.ttype), self.ls]
+                                ).reshape(1,1,self.kernel_size)
+
+
+class S_estimator(torch.nn.Module):
+    '''
+    Creates an estimator of a skew-symmetric convolution operator to apply to
+    the integral H.
+
+    Parameters
+    ----------
+    kernel_size : int
+    ttype : torch type, default torch.float32
+
+    '''
+
+    def __init__(self, kernel_size=3, ttype=torch.float32):
+        super().__init__()
+
+        self.ttype = ttype
+        self.kernel_size = kernel_size
+        if self.kernel_size > 1:
+            d = int((kernel_size-3)/2)
+            self.ls = torch.nn.Parameter(torch.zeros(d, dtype=self.ttype), requires_grad=True)
+
+    def forward(self, x=None):
+        """
+        Returns
+        -------
+        (N, N) tensor
+            Damping matrix
+        """
+        if self.kernel_size == 1 or self.kernel_size == 0:
+            return torch.tensor([0], dtype=self.ttype).reshape(1,1,1)
+        else:
+            return torch.concat([-self.ls,torch.tensor([-1.,0.,1.], dtype=self.ttype),self.ls]
+                                ).reshape(1,1,self.kernel_size)
+
+
 def load_baseline_model(modelpath):
     """
     Loads a :py:class:`BaslineNN` or a :py:class:`BaselineSplitNN`
@@ -443,6 +751,26 @@ def load_baseline_model(modelpath):
             external_forces_filter_x=external_forces_filter_x,
             external_forces_filter_t=external_forces_filter_t,
             ttype=ttype)
+    elif 'split' in metadict['rhs_model'].keys():
+        hidden_dim = metadict['rhs_model']['hidden_dim']
+        timedependent = metadict['rhs_model']['timedependent']
+        statedependent = metadict['rhs_model']['statedependent']
+        spacedependent = metadict['rhs_model']['spacedependent']
+        period = metadict['rhs_model']['period']
+        number_of_intermediate_outputs = metadict['rhs_model']['number_of_intermediate_outputs']
+        rhs_model = PDEBaselineSplitNN(
+            nstates, hidden_dim, timedependent, statedependent, spacedependent,
+            period, number_of_intermediate_outputs)
+    elif 'spacedependent' in metadict['rhs_model'].keys():
+        hidden_dim = metadict['rhs_model']['hidden_dim']
+        timedependent = metadict['rhs_model']['timedependent']
+        statedependent = metadict['rhs_model']['statedependent']
+        spacedependent = metadict['rhs_model']['spacedependent']
+        period = metadict['rhs_model']['period']
+        number_of_intermediate_outputs = metadict['rhs_model']['number_of_intermediate_outputs']
+        rhs_model = PDEBaselineNN(
+            nstates, hidden_dim, timedependent, statedependent, spacedependent,
+            period, number_of_intermediate_outputs)
     else:
         hidden_dim = metadict['rhs_model']['hidden_dim']
         timedependent = metadict['rhs_model']['timedependent']
@@ -470,7 +798,7 @@ def store_baseline_model(storepath, model, optimizer, **kwargs):
     Parameters
     ----------
     storepath : str
-    model : BaslineNN, BaselineSplitNN
+    model : BaselineNN, BaselineSplitNN, PDEBaselineNN
     optimizer : torch optimizer
     * * kwargs : dict
         Contains additional information about for instance training
@@ -505,6 +833,18 @@ def store_baseline_model(storepath, model, optimizer, **kwargs):
         metadict['rhs_model']['external_forces_filter_x'] = model.rhs_model.network_x.external_forces_filter.T
         metadict['rhs_model']['external_forces_filter_t'] = model.rhs_model.network_t.external_forces_filter.T
         metadict['rhs_model']['state_dict'] = model.rhs_model.state_dict()
+
+    elif isinstance(model.rhs_model, PDEBaselineNN) or isinstance(model.rhs_model, PDEBaselineSplitNN):
+        metadict['rhs_model'] = {}
+        metadict['rhs_model']['hidden_dim'] = model.rhs_model.hidden_dim
+        metadict['rhs_model']['timedependent'] = model.rhs_model.timedependent
+        metadict['rhs_model']['statedependent'] = model.rhs_model.statedependent
+        metadict['rhs_model']['spacedependent'] = model.rhs_model.spacedependent
+        metadict['rhs_model']['period'] = model.rhs_model.period
+        metadict['rhs_model']['number_of_intermediate_outputs'] = model.rhs_model.number_of_intermediate_outputs
+        metadict['rhs_model']['state_dict'] = model.rhs_model.state_dict()
+        if isinstance(model.rhs_model, PDEBaselineSplitNN):
+            metadict['rhs_model']['split'] = model.rhs_model.split
 
     metadict['traininginfo'] = {}
     metadict['traininginfo']['optimizer_state_dict'] = optimizer.state_dict()

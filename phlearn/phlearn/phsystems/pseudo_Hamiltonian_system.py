@@ -95,7 +95,7 @@ class PseudoHamiltonianSystem:
             structure_matrix is not None
             and not callable(structure_matrix)
             and not np.allclose(structure_matrix, -structure_matrix.T, atol=1e-15)
-        ): # missed case where S is callable and non-skew-symmetric
+        ):
             raise Exception("structure_matrix must be skew-symmetric")
 
         if hamiltonian is None and grad_hamiltonian is None:
