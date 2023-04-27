@@ -13,8 +13,12 @@ phlearn contains three subpackages:
 - :py:mod:`~.utils` for convenience functions.
 
 """
-
-from . import control
+try:
+  from . import control
+except ModuleNotFoundError:
+  # from warnings import warn
+  # warn("Loading phlearn without control module")
+  pass 
 from . import phnns
 from . import phsystems
 from . import utils

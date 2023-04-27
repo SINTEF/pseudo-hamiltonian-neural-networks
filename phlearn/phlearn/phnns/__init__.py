@@ -62,6 +62,8 @@ from . import dynamic_system_neural_network
 from .dynamic_system_neural_network import *
 from . import pseudo_hamiltonian_neural_network
 from .pseudo_hamiltonian_neural_network import *
+from . import conservative_dissipative_neural_network
+from .conservative_dissipative_neural_network import *
 from . import models
 from .models import *
 from . import train_utils
@@ -69,5 +71,6 @@ from .train_utils import *
 
 __all__ = dynamic_system_neural_network.__all__.copy()
 __all__ += pseudo_hamiltonian_neural_network.__all__.copy()
+__all__ += conservative_dissipative_neural_network.__all__.copy()
 __all__ += models.__all__.copy()
 __all__ += train_utils.__all__.copy()

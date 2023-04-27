@@ -1,12 +1,17 @@
 import argparse
 
-import casadi
 import matplotlib.pyplot as plt
 import numpy as np
 
 from phlearn.phsystems import init_tanksystem
 from phlearn.control import StepReference, PseudoHamiltonianMPC
 from phlearn.phnns import load_dynamic_system_model
+
+try:
+    import casadi
+except ModuleNotFoundError:
+    raise ModuleNotFoundError("To use the phlearn.control module install via 'pip install phlearn[control]' ")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -1,14 +1,13 @@
-
 import numpy as np
 from scipy.integrate import solve_ivp
 import torch
 
 from ..utils.derivatives import time_derivative
 
-__all__ = ['PseudoHamiltonianSystem', 'zero_force']
+__all__ = ["PseudoHamiltonianSystem", "zero_force"]
 
 
-class PseudoHamiltonianSystem():
+class PseudoHamiltonianSystem:
     """
     Implements a pseudo-Hamiltonian system of the form::
 
@@ -29,7 +28,7 @@ class PseudoHamiltonianSystem():
             input of shape (nsamples, nstates) and returning an ndarray
             of shape (nsamples, nstates, nstates). If None,
             the system is assumed to be canonical, and the
-            S matrix is set to be [[0, I_n], [-I_n, 0]].
+            S matrix is set to be [[0, I_N], [-I_N, 0]].
 
         dissipation_matrix : (N, N) ndarray or callable, default None
             Corresponds to the R matrix. Must either be an
@@ -57,7 +56,7 @@ class PseudoHamiltonianSystem():
             The external forces affecting system. Callable taking two
             ndarrays as input, x and t, of shape (nsamples, nstates),
             (nsamples, 1), respectively and returning an ndarray of
-            shape (nasamples, nstates).
+            shape (nsamples, nstates).
 
         controller : phlearn.control.PseudoHamiltonianController,
         default None
@@ -79,18 +78,44 @@ class PseudoHamiltonianSystem():
 
     """
 
-    def __init__(self, nstates, structure_matrix=None,
-                 dissipation_matrix=None, hamiltonian=None,
-                 grad_hamiltonian=None, external_forces=None,
-                 controller=None, init_sampler=None):
-
+    def __init__(
+        self,
+        nstates,
+        structure_matrix=None,
+        dissipation_matrix=None,
+        hamiltonian=None,
+        grad_hamiltonian=None,
+        external_forces=None,
+        controller=None,
+        init_sampler=None,
+    ):
         self.nstates = nstates
 
+        if (
+            structure_matrix is not None
+            and not callable(structure_matrix)
+            and not np.allclose(structure_matrix, -structure_matrix.T, atol=1e-15)
+        ):
+            raise Exception("structure_matrix must be skew-symmetric")
+
+        if hamiltonian is None and grad_hamiltonian is None:
+            raise Exception(
+                "Either one of hamiltonian or grad_hamiltonian must be provided"
+            )
+
         if structure_matrix is None:
+            if nstates % 2 == 1:
+                raise Exception(
+                    "nstates must be even when structure_matrix not provided"
+                )
+
             npos = nstates // 2
             structure_matrix = np.block(
-                [[np.zeros([npos, npos]), np.eye(npos)],
-                 [-np.eye(npos), np.zeros([npos, npos])]])
+                [
+                    [np.zeros([npos, npos]), np.eye(npos)],
+                    [-np.eye(npos), np.zeros([npos, npos])],
+                ]
+            )
 
         if not callable(structure_matrix):
             self.structure_matrix = structure_matrix
@@ -164,14 +189,27 @@ class PseudoHamiltonianSystem():
 
         S = self.S(x)
         R = self.R(x)
-        dH = self.dH(x)
+        dH = self.dH(x.T).T
+        
         if (len(S.shape) == 3) or (len(R.shape) == 3):
-            dynamics = (np.matmul(S - R, np.atleast_3d(dH)).reshape(x.shape)
-                        + self.external_forces(x, t))
+            dynamics = np.matmul(S - R, np.atleast_3d(dH)).reshape(
+                x.shape
+            ) + self.external_forces(x, t)
         else:
-            dynamics = dH@(S.T - R.T) + self.external_forces(x, t)
+            def F(x, t):
+                """Temporary wrapper function for external force to allow user defined
+                force that takes x of shape (nstates, 1) and t as a float.
+                Putting this here as I don't know how this would affect the
+                above logical block. TODO this is creating a ragged array from
+                list of lists and needs fixed."""
+                return np.array([Fxy for Fxy in map(self.external_forces, x, t)])
+            
+            dynamics = dH @ (S.T - R.T) + F(x, t)
+            # dynamics = dH @ (S.T - R.T) + self.external_forces(x, t)
+            
         if u is not None:
             dynamics += u
+
         return dynamics
 
     def sample_trajectory(self, t, x0=None, noise_std=0, reference=None):
@@ -204,11 +242,13 @@ class PseudoHamiltonianSystem():
             x0 = self._initial_condition_sampler(self.rng)
 
         if self.controller is None:
-            x_dot = lambda t, x: self.x_dot(x.reshape(1, x.shape[-1]),
-                                            np.array(t).reshape((1, 1)))
-            out_ivp = solve_ivp(fun=x_dot, t_span=(t[0], t[-1]), y0=x0,
-                                t_eval=t, rtol=1e-10)
-            x, t = out_ivp['y'].T, out_ivp['t'].T
+            x_dot = lambda t, x: self.x_dot(
+                x.reshape(1, x.shape[-1]), np.array(t).reshape((1, 1))
+            )
+            out_ivp = solve_ivp(
+                fun=x_dot, t_span=(t[0], t[-1]), y0=x0, t_eval=t, rtol=1e-10
+            )
+            x, t = out_ivp["y"].T, out_ivp["t"].T
             dxdt = self.x_dot(x, t)
             us = None
         else:
@@ -224,16 +264,20 @@ class PseudoHamiltonianSystem():
             for i, t_step in enumerate(t[:-1]):
                 dt = t[i + 1] - t[i]
                 us[i, :] = self.controller(x[i, :], t_step)
-                dxdt[i, :] = self.time_derivative('rk4', x[i:i+1, :],
-                                                  x[i:i+1, :],
-                                                  np.array([t_step]),
-                                                  np.array([t_step]),
-                                                  dt, u=us[i:i+1, :])
-                x[i + 1, :] = x[i, :] + dt*dxdt[i, :]
+                dxdt[i, :] = self.time_derivative(
+                    "rk4",
+                    x[i : i + 1, :],
+                    x[i : i + 1, :],
+                    np.array([t_step]),
+                    np.array([t_step]),
+                    dt,
+                    u=us[i : i + 1, :],
+                )
+                x[i + 1, :] = x[i, :] + dt * dxdt[i, :]
 
         # Add noise:
-        x += self.rng.normal(size=x.shape)*noise_std
-        dxdt += self.rng.normal(size=dxdt.shape)*noise_std
+        x += self.rng.normal(size=x.shape) * noise_std
+        dxdt += self.rng.normal(size=dxdt.shape) * noise_std
 
         return x, dxdt, t, us
 
@@ -245,14 +289,19 @@ class PseudoHamiltonianSystem():
 
     def _dH(self, x):
         x = torch.tensor(x, requires_grad=True)
-        return torch.autograd.grad(self.H(x).sum(), x, retain_graph=False,
-                                   create_graph=False)[0].detach().numpy()
+        return (
+            torch.autograd.grad(
+                self.H(x).sum(), x, retain_graph=False, create_graph=False
+            )[0]
+            .detach()
+            .numpy()
+        )
 
     def _initial_condition_sampler(self, rng=None):
         if rng is None:
             assert self.rng is not None
             rng = self.rng
-        return rng.uniform(low=-1., high=1.0, size=self.nstates)
+        return rng.uniform(low=-1.0, high=1.0, size=self.nstates)
 
 
 def zero_force(x, t=None):

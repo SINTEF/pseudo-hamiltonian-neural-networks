@@ -1,0 +1,11 @@
+stages:
+    - test
+
+run_tests:
+    stage: test
+    image: python:3.9
+    before_script:
+        - pip install -r phlearn/requirements.txt
+        - pip install -r phlearn/requirements-dev.txt
+    script:
+        - pytest -v

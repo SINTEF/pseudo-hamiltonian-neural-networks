@@ -2,10 +2,15 @@ from .phcontroller import PseudoHamiltonianController
 from ..phnns.models import R_estimator
 from .casadiPH import CasadiPseudoHamiltonianSystem
 from .casadiNN import CasadiFCNN, get_pytorch_model_parameters, get_pytorch_model_architecture
-import do_mpc
 import numpy as np
-import casadi
 import torch
+
+try:
+    import do_mpc
+    import casadi
+except ModuleNotFoundError:
+    raise ModuleNotFoundError("To use the phlearn.control module install via 'pip install phlearn[control]' ")
+
 
 __all__ = ['PseudoHamiltonianMPC']
 
