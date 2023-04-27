@@ -117,10 +117,12 @@ class TankSystem(PseudoHamiltonianSystem):
             A = A*np.ones(self.ntanks)
 
         self.Hvec = np.concatenate((1/J, rho*g / A))
-        super().__init__(nstates, structure_matrix=structure_matrix,
-                         dissipation_matrix=dissipation, **kwargs)
-        self.H = self.H_tanksystem
-        self.dH = self.dH_tanksystem
+        super().__init__(nstates,
+                         hamiltonian=self.H_tanksystem,
+                         grad_hamiltonian=self.dH_tanksystem,
+                         structure_matrix=structure_matrix,
+                         dissipation_matrix=dissipation,
+                         **kwargs)
 
     def H_tanksystem(self, x, t=None):
         return x**2 @ self.Hvec / 2

@@ -88,8 +88,9 @@ class DynamicSystemNN(torch.nn.Module):
 
         return time_derivative(integrator, self.x_dot, *args, **kwargs)
 
-    def simulate_trajectory(self, t_sample, integrator=False, x0=None,
-                            noise_std=0., reference=None):
+
+    def simulate_trajectory(self, integrator, t_sample, x0=None,
+                            xspatial=None, noise_std=0., reference=None):
         """
         Simulate a trajectory using the rhs_model and sample at times
         *t_sample*.
@@ -98,10 +99,11 @@ class DynamicSystemNN(torch.nn.Module):
         ----------
         integrator : str or False
             Specifies which solver to use during simulation. If False,
-            the problem is left to scipy's solve_ivp. If 'euler', the system
-            is simulated with the forward Euler method.
-            If 'midpoint', 'rk4' or 'srk4' the system is simulated with
-            the classic Runge-Kutta-4 method.
+            the problem is left to scipy's solve_ivp. If 'euler',
+            'midpoint', 'rk4' or 'srk4' the system is simulated with
+            the forward euler method, the implicit midpoint method,
+            the explicit Runge-Kutta 4 method or a symmetric fourth
+            order Runge-Kutta method, respectively.
         t_sample : (T, 1) tensor or ndarray
             Times at which the trajectory is sampled.
         x0 : (N,) tensor or ndarray, default None
@@ -126,12 +128,22 @@ class DynamicSystemNN(torch.nn.Module):
             x0 = self._initial_condition_sampler(1)
 
         if not integrator and self.controller is None:
-            x_dot = lambda t, x: self.x_dot(
-                        torch.tensor(x.reshape(1, x.shape[-1]),
-                                     dtype=self.ttype),
-                        torch.tensor(np.array(t).reshape((1, 1)),
-                                     dtype=self.ttype)
-                        ).detach().numpy().flatten()
+            if xspatial is not None:
+                x_dot = lambda t, x: self._x_dot(
+                            torch.tensor(x.reshape(1, x.shape[-1]),
+                                        dtype=self.ttype),
+                            torch.tensor(np.array(t).reshape((1, 1)),
+                                        dtype=self.ttype),
+                            xspatial=torch.tensor(np.array(xspatial).reshape(1, xspatial.shape[-1]),
+                                        dtype=self.ttype)
+                            ).detach().numpy().flatten()
+            else:
+                x_dot = lambda t, x: self._x_dot(
+                            torch.tensor(x.reshape(1, x.shape[-1]),
+                                        dtype=self.ttype),
+                            torch.tensor(np.array(t).reshape((1, 1)),
+                                        dtype=self.ttype)
+                            ).detach().numpy().flatten()
             out_ivp = solve_ivp(fun=x_dot, t_span=(t_sample[0], t_sample[-1]),
                                 y0=x0.detach().numpy().flatten(),
                                 t_eval=t_sample, rtol=1e-10)
@@ -146,7 +158,7 @@ class DynamicSystemNN(torch.nn.Module):
                       'instead of solve_ivp.')
             elif integrator.lower() not in ['euler', 'rk4']:
                 print('Warning: Only explicit integrators euler and rk4 or no '
-                      'integrator (False) allowed for simulation. Ignoring '
+                      'integrator (False) allowed for inference. Ignoring '
                       f'integrator {integrator} and using rk4.')
                 integrator = 'rk4'
 
@@ -162,16 +174,30 @@ class DynamicSystemNN(torch.nn.Module):
             u = None
             us = torch.zeros([nsteps - 1, x0.shape[-1]])
 
-            for i, t_step in enumerate(t_sample[:-1]):
-                t_step = torch.squeeze(t_step).reshape(-1, 1)
-                if self.controller is not None:
-                    u = to_tensor(self.controller(xs[i, :], t_step),
-                                  self.ttype)
-                    us[i, :] = u
-                dt = t_sample[i + 1] - t_step
-                xs[i + 1, :] = xs[i, :] + dt*self.time_derivative(
-                    integrator, xs[i:i+1, :], xs[i:i+1, :],
-                    t_step, t_step, dt, u)
+            if xspatial is not None:
+                for i, t_step in enumerate(t_sample[:-1]):
+                    t_step = torch.squeeze(t_step).reshape(-1, 1)
+                    if self.controller is not None:
+                        u = to_tensor(self.controller(xs[i, :], t_step),
+                                    self.ttype)
+                        us[i, :] = u
+                    dt = t_sample[i + 1] - t_step
+                    xs[i + 1, :] = xs[i, :] + dt*self.time_derivative(
+                        integrator, xs[i:i+1, :], xs[i:i+1, :],
+                        t_step, t_step, dt, u, xspatial=torch.tensor(
+                                np.array(xspatial).reshape(1, xspatial.shape[-1]),
+                                dtype=self.ttype))
+            else:
+                for i, t_step in enumerate(t_sample[:-1]):
+                    t_step = torch.squeeze(t_step).reshape(-1, 1)
+                    if self.controller is not None:
+                        u = to_tensor(self.controller(xs[i, :], t_step),
+                                    self.ttype)
+                        us[i, :] = u
+                    dt = t_sample[i + 1] - t_step
+                    xs[i + 1, :] = xs[i, :] + dt*self.time_derivative(
+                        integrator, xs[i:i+1, :], xs[i:i+1, :],
+                        t_step, t_step, dt, u)
             xs = xs.detach().numpy()
             if self.controller is not None:
                 us = us.detach().numpy()
@@ -179,6 +205,7 @@ class DynamicSystemNN(torch.nn.Module):
                 us = None
 
         return xs, us
+
 
     def simulate_trajectories(self, ntrajectories, integrator, t_sample,
                               x0=None, noise_std=0, references=None):
@@ -271,12 +298,19 @@ class DynamicSystemNN(torch.nn.Module):
 
         self.controller = controller
 
-    def _x_dot(self, x, t, u=None):
+    def lhs(self, dxdt):
+        return dxdt
+
+    def _x_dot(self, x, t, u=None, xspatial=None):
         x = to_tensor(x, self.ttype)
         t = to_tensor(t, self.ttype)
         u = to_tensor(u, self.ttype)
 
-        dynamics = self.rhs_model(x, t)
+        if xspatial is not None:
+            xspatial = to_tensor(xspatial, self.ttype)
+            dynamics = self.rhs_model(x, t, xspatial)
+        else:
+            dynamics = self.rhs_model(x, t)
         if u is not None:
             dynamics += u
         return dynamics

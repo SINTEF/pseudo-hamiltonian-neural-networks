@@ -200,7 +200,7 @@ class PseudoHamiltonianNN(DynamicSystemNN):
                                    retain_graph=False,
                                    create_graph=False)[0].detach()
 
-    def _x_dot(self, x, t, u=None):
+    def _x_dot(self, x, t, u=None, xspatial=None):
         x = to_tensor(x, self.ttype)
         t = to_tensor(t, self.ttype)
         u = to_tensor(u, self.ttype)
@@ -344,12 +344,14 @@ def store_phnn_model(storepath, model, optimizer, **kwargs):
     metadict['nstates'] = model.nstates
     metadict['structure_matrix'] = model.structure_matrix
     metadict['hamiltonian_provided'] = model.hamiltonian_provided
-    metadict['grad_hamiltonian_provided'] = model.hamiltonian_provided
+    metadict['grad_hamiltonian_provided'] = model.grad_hamiltonian_provided
     metadict['external_forces_provided'] = model.external_forces_provided
     metadict['dissipation_provided'] = model.dissipation_provided
     metadict['init_sampler'] = model._initial_condition_sampler
     metadict['controller'] = model.controller
     metadict['ttype'] = model.ttype
+
+    metadict = {att.__name__ : att for att in model.__attr__}
 
     metadict['traininginfo'] = {}
     metadict['traininginfo']['optimizer_state_dict'] = optimizer.state_dict()
