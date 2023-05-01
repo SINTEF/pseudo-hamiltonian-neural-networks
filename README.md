@@ -3,7 +3,7 @@
 This repository contains the package phlearn for modelling pseudo-Hamiltonian ODE and PDE systems with neural networks, and example scripts for training and simulation.
 
 See [(Eidnes et al., 2022)](https://arxiv.org/pdf/2206.02660.pdf) for a description of PHNN for ODEs.
-See [(Eidnes and Lye, 2022)](https://arxiv.org/pdf/2304.14374.pdf) for a description of PHNN for PDEs.
+See [(Eidnes and Lye, 2023)](https://arxiv.org/pdf/2304.14374.pdf) for a description of PHNN for PDEs.
 
 [Documentation available here](https://pseudo-Hamiltonian-neural-networks.readthedocs.io/en/latest/)
 
