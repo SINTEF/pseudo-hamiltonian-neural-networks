@@ -8,7 +8,7 @@ def read(fname):
 
 setuptools.setup(
     name='phlearn',
-    version='1.1.0',
+    version='1.1.1',
     author='Sølve Eidnes',
     author_email='solve.eidnes@sintef.no',
     description=('A package for simulating and learning pseudo-Hamiltonian systems.'
@@ -22,10 +22,10 @@ setuptools.setup(
     ],
     license='MIT',
     install_requires=[
-        'networkx==2.7.1',
-        'numpy==1.22.3',
-        'torchvision==0.11.3',
-        'scipy==1.8.0',
+        'networkx>=2.7.1',
+        'numpy>=1.22.3',
+        'torchvision',
+        'scipy>=1.8.0',
         'torch',
         'torchaudio',
         'matplotlib',
