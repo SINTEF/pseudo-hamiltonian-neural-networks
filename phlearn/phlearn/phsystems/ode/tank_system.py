@@ -4,10 +4,7 @@ import numbers
 import networkx as nx
 import numpy as np
 
-from .pseudo_Hamiltonian_system import PseudoHamiltonianSystem
-
-__all__ = ['TankSystem', 'init_tanksystem',
-           'init_tanksystem_leaky']
+from .pseudo_hamiltonian_system import PseudoHamiltonianSystem
 
 
 class TankSystem(PseudoHamiltonianSystem):
@@ -95,7 +92,7 @@ class TankSystem(PseudoHamiltonianSystem):
             self.ntanks = ntanks
             B = incidence_matrix
 
-        structure_matrix = np.block(
+        skewsymmetric_matrix = np.block(
             [[np.zeros((self.npipes, self.npipes)), B.T],
              [-B, np.zeros((self.ntanks, self.ntanks))]])
 
@@ -120,7 +117,7 @@ class TankSystem(PseudoHamiltonianSystem):
         super().__init__(nstates,
                          hamiltonian=self.H_tanksystem,
                          grad_hamiltonian=self.dH_tanksystem,
-                         structure_matrix=structure_matrix,
+                         skewsymmetric_matrix=skewsymmetric_matrix,
                          dissipation_matrix=dissipation,
                          **kwargs)
 
@@ -128,14 +125,13 @@ class TankSystem(PseudoHamiltonianSystem):
         return x**2 @ self.Hvec / 2
 
     def dH_tanksystem(self, x, t=None):
-        return x * self.Hvec
+        return (x.T * self.Hvec).T
 
     def pipeflows(self, x):
         return x[..., :self.npipes]
 
     def tanklevels(self, x):
         return x[..., self.npipes:]
-
 
 def init_tanksystem(u=None):
     """

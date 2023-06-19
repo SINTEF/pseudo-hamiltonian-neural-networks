@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 from phlearn.phnns import load_dynamic_system_model, PseudoHamiltonianNN, BaselineSplitNN
-from phlearn.phsystems import init_tanksystem, init_msdsystem
+from phlearn.phsystems.ode import init_tanksystem, init_msdsystem
 
 ttype = torch.float32
 torch.set_default_dtype(ttype)

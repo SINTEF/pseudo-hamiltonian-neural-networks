@@ -33,7 +33,7 @@ if __name__ == "__main__":
             baseline = pH_system.rhs_model
             external_forces = None
         else:
-            S = pH_system.structure_matrix.copy()
+            S = pH_system.skewsymmetric_matrix.copy()
             H = pH_system.hamiltonian
             dH = None
             R = pH_system.R
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         pH_system = init_tanksystem()
         pH_system.seed(seed)
 
-        S = pH_system.structure_matrix
+        S = pH_system.skewsymmetric_matrix
         H = None
         dH = pH_system.dH
         baseline = None

@@ -6,7 +6,7 @@
 # to run this as a module, allowing use of relative imports
 
 import numpy as np
-from ..ode.pseudo_hamiltonian_system import PseudoHamiltonianSystem
+from ..pseudo_hamiltonian_system import PseudoHamiltonianSystem
 import torch
 
 
