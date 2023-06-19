@@ -1,4 +1,4 @@
-# pseudo-Hamiltonian neural networks
+# Pseudo-Hamiltonian neural networks
 
 This repository contains the package phlearn for modelling pseudo-Hamiltonian ODE and PDE systems with neural networks, and example scripts for training and simulation.
 

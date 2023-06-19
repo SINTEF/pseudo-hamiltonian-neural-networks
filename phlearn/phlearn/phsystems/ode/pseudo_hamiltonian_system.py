@@ -2,9 +2,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import torch
 
-from ..utils.derivatives import time_derivative
-
-__all__ = ["PseudoHamiltonianSystem", "zero_force"]
+from ...utils.derivatives import time_derivative
 
 
 class PseudoHamiltonianSystem:
@@ -13,7 +11,7 @@ class PseudoHamiltonianSystem:
 
         dx/dt = (S(x) - R(x))*grad[H(x)] + F(x, t)
 
-    where x is the system state, S is the skew-synnetric interconnection
+    where x is the system state, S is the skew-symmetric interconnection
     matrix, R is the positive semi-definite dissipation matrix, H is the
     Hamiltonian of the systemm, F is the external force(s).
 
@@ -22,7 +20,7 @@ class PseudoHamiltonianSystem:
         nstates : int
             Number of system states N.
 
-        structure_matrix : (N, N) ndarray or callable, default None
+        skewsymmetric_matrix : (N, N) ndarray or callable, default None
             Corresponds to the S matrix. Must either be an
             ndarray, or callable taking an ndarray
             input of shape (nsamples, nstates) and returning an ndarray
@@ -81,48 +79,47 @@ class PseudoHamiltonianSystem:
     def __init__(
         self,
         nstates,
-        structure_matrix=None,
+        skewsymmetric_matrix=None,
         dissipation_matrix=None,
         hamiltonian=None,
         grad_hamiltonian=None,
         external_forces=None,
         controller=None,
-        init_sampler=None,
-    ):
+        init_sampler=None,    ):
         self.nstates = nstates
 
         if (
-            structure_matrix is not None
-            and not callable(structure_matrix)
-            and not np.allclose(structure_matrix, -structure_matrix.T, atol=1e-15)
+            skewsymmetric_matrix is not None
+            and not callable(skewsymmetric_matrix)
+            and not np.allclose(skewsymmetric_matrix, -skewsymmetric_matrix.T, atol=1e-15)
         ):
-            raise Exception("structure_matrix must be skew-symmetric")
+            raise Exception("skewsymmetric_matrix must be skew-symmetric")
 
         if hamiltonian is None and grad_hamiltonian is None:
             raise Exception(
                 "Either one of hamiltonian or grad_hamiltonian must be provided"
             )
 
-        if structure_matrix is None:
+        if skewsymmetric_matrix is None:
             if nstates % 2 == 1:
                 raise Exception(
-                    "nstates must be even when structure_matrix not provided"
+                    "nstates must be even when skewsymmetric_matrix not provided"
                 )
 
             npos = nstates // 2
-            structure_matrix = np.block(
+            skewsymmetric_matrix = np.block(
                 [
                     [np.zeros([npos, npos]), np.eye(npos)],
                     [-np.eye(npos), np.zeros([npos, npos])],
                 ]
             )
 
-        if not callable(structure_matrix):
-            self.structure_matrix = structure_matrix
-            self.S = lambda x: structure_matrix
+        if not callable(skewsymmetric_matrix):
+            self.skewsymmetric_matrix = skewsymmetric_matrix
+            self.S = lambda x: skewsymmetric_matrix
         else:
-            self.structure_matrix = None
-            self.S = structure_matrix
+            self.skewsymmetric_matrix = None
+            self.S = skewsymmetric_matrix
 
         if dissipation_matrix is None:
             dissipation_matrix = np.zeros((self.nstates, self.nstates))
@@ -190,23 +187,14 @@ class PseudoHamiltonianSystem:
         S = self.S(x)
         R = self.R(x)
         dH = self.dH(x.T).T
-        
+
         if (len(S.shape) == 3) or (len(R.shape) == 3):
             dynamics = np.matmul(S - R, np.atleast_3d(dH)).reshape(
                 x.shape
-            ) + self.external_forces(x, t)
+            ) + self.external_forces(x, t).reshape(x.shape)
         else:
-            def F(x, t):
-                """Temporary wrapper function for external force to allow user defined
-                force that takes x of shape (nstates, 1) and t as a float.
-                Putting this here as I don't know how this would affect the
-                above logical block. TODO this is creating a ragged array from
-                list of lists and needs fixed."""
-                return np.array([Fxy for Fxy in map(self.external_forces, x, t)])
-            
-            dynamics = dH @ (S.T - R.T) + F(x, t)
-            # dynamics = dH @ (S.T - R.T) + self.external_forces(x, t)
-            
+            dynamics = dH @ (S.T - R.T) + self.external_forces(x, t).reshape(x.shape)
+
         if u is not None:
             dynamics += u
 

@@ -1,5 +1,5 @@
 from .phcontroller import PseudoHamiltonianController
-from ..phnns.models import R_estimator
+from ..phnns.ode_models import R_estimator
 from .casadiPH import CasadiPseudoHamiltonianSystem
 from .casadiNN import CasadiFCNN, get_pytorch_model_parameters, get_pytorch_model_architecture
 import numpy as np

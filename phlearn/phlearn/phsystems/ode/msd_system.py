@@ -1,10 +1,6 @@
-
 import numpy as np
 
-from .pseudo_Hamiltonian_system import PseudoHamiltonianSystem
-
-__all__ = ['MassSpringDamperSystem', 'init_msdsystem',
-           'initial_condition_radial']
+from .pseudo_hamiltonian_system import PseudoHamiltonianSystem
 
 
 class MassSpringDamperSystem(PseudoHamiltonianSystem):
@@ -33,16 +29,22 @@ class MassSpringDamperSystem(PseudoHamiltonianSystem):
     """
 
     def __init__(self, mass=1.0, spring_constant=1.0, damping=0.3, **kwargs):
-        R = np.array([[0, 0], [0, damping]])
+        R = np.diag([0, damping])
+        M = np.diag([spring_constant / 2, 1 / (2 * mass)])
 
-        def ham(x):
-            return np.dot(x**2, np.array([spring_constant / 2, 1/(2*mass)]))
+        def hamiltonian(x):
+            return x.T @ M @ x
 
-        def ham_grad(x):
-            return np.matmul(x, np.diag([spring_constant, 1/mass]))
+        def hamiltonian_grad(x):
+            return 2 * M @ x
 
-        super().__init__(nstates=2, hamiltonian=ham, grad_hamiltonian=ham_grad,
-                         dissipation_matrix=R, **kwargs)
+        super().__init__(
+            nstates=2,
+            hamiltonian=hamiltonian,
+            grad_hamiltonian=hamiltonian_grad,
+            dissipation_matrix=R,
+            **kwargs
+        )
 
 
 def init_msdsystem():
@@ -59,10 +61,11 @@ def init_msdsystem():
     omega = 3
 
     def F(x, t):
-        return (f0*np.sin(omega*t)).reshape(x[..., 1:].shape)*np.array([0, 1])
+        return (f0 * np.sin(omega * t)).reshape(x[..., 1:].shape) * np.array([0, 1])
 
     return MassSpringDamperSystem(
-        external_forces=F, init_sampler=initial_condition_radial(1, 4.5))
+        external_forces=F, init_sampler=initial_condition_radial(1, 4.5)
+    )
 
 
 def initial_condition_radial(r_min, r_max):
@@ -77,9 +80,10 @@ def initial_condition_radial(r_min, r_max):
         initial state of size 2.
 
     """
+
     def sampler(rng):
         r = (r_max - r_min) * np.sqrt(rng.uniform(size=1)) + r_min
-        theta = 2.*np.pi * rng.uniform(size=1)
+        theta = 2.0 * np.pi * rng.uniform(size=1)
         q = r * np.cos(theta)
         p = r * np.sin(theta)
         return np.array([q, p]).flatten()

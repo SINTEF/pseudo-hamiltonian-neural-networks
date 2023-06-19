@@ -1,23 +1,23 @@
-
 import autograd.numpy as np
 import autograd
 from scipy.integrate import solve_ivp
 
-from ..utils.derivatives import time_derivative
-from ..utils.utils import midpoint_method
-
-__all__ = ['ConservativeDissipativeSystem', 'zero_force']
+from ...utils.derivatives import time_derivative
+from ...utils.utils import midpoint_method
 
 
-class ConservativeDissipativeSystem():
+class PseudoHamiltonianPDESystem:
     """
-    Implements a conservative-dissipative system of the form::
+    Implements a spatially discretized pseudo-Hamiltonian PDE system of the form:
 
-        dx/dt = S(x)*grad[H(x)] - R(x)*grad[V(x)] + F(x, t)
+        dx/dt = S*grad[H(x)] - R*grad[V(x)] + F(x, t, xspatial)
 
-    where x is the system state, S is the interconection matrix,
-    H is the Hamiltonian of the system, V is the dissipating integral,
-    F is the external forces.
+    where x is the system state, A is a symmetric matrix, S is a skew-symmetric matrix,
+    R is the symmetric dissipation matrix, H and V are discretized integrals of the systemm,
+    F is the external force depending on state, time and space.
+
+    What is x here is usually u in the literature, and xspatial is x. We use x for
+    the state to be consistent with the ODE case.
 
     Parameters
     ----------
@@ -89,16 +89,23 @@ class ConservativeDissipativeSystem():
 
     """
 
-    def __init__(self, nstates, lhs_matrix=None,
-                 skewsymmetric_matrix=None,
-                 dissipation_matrix=None,
-                 hamiltonian=None, dissintegral=None,
-                 grad_hamiltonian=None, grad_dissintegral=None,
-                 hess_hamiltonian=None, hess_dissintegral=None,
-                 external_forces=None, jac_external_forces=None,
-                 controller=None,
-                 init_sampler=None):
-
+    def __init__(
+        self,
+        nstates,
+        lhs_matrix=None,
+        skewsymmetric_matrix=None,
+        dissipation_matrix=None,
+        hamiltonian=None,
+        dissintegral=None,
+        grad_hamiltonian=None,
+        grad_dissintegral=None,
+        hess_hamiltonian=None,
+        hess_dissintegral=None,
+        external_forces=None,
+        jac_external_forces=None,
+        controller=None,
+        init_sampler=None,
+    ):
         self.nstates = nstates
 
         self.lhs_matrix_provided = True
@@ -107,13 +114,16 @@ class ConservativeDissipativeSystem():
             self.lhs_matrix_provided = False
 
         self.lhs_matrix = lhs_matrix
-        self.A = lambda x: lhs_matrix # check if this is necessary
-        
+        self.A = lambda x: lhs_matrix 
+
         if skewsymmetric_matrix is None:
             npos = nstates // 2
             skewsymmetric_matrix = np.block(
-                [[np.zeros([npos, npos]), np.eye(npos)],
-                 [-np.eye(npos), np.zeros([npos, npos])]])
+                [
+                    [np.zeros([npos, npos]), np.eye(npos)],
+                    [-np.eye(npos), np.zeros([npos, npos])],
+                ]
+            )
 
         if not callable(skewsymmetric_matrix):
             self.skewsymmetric_matrix = skewsymmetric_matrix
@@ -126,7 +136,11 @@ class ConservativeDissipativeSystem():
             dissipation_matrix = np.eye(nstates)
 
         self.dissipation_matrix = dissipation_matrix
-        self.R = lambda x: dissipation_matrix # check if this is necessary
+        self.R = lambda x: dissipation_matrix
+
+        self.skewsymmetric_matrix_flat = np.array([[[-1, 0, 1]]])
+        self.dissipation_matrix_flat = np.array([[[1]]])
+        self.lhs_matrix_flat = np.array([[[1]]])
 
         self.H = hamiltonian
         self.dH = grad_hamiltonian
@@ -204,16 +218,16 @@ class ConservativeDissipativeSystem():
             dV = self.dV(x)
         else:
             dV = np.zeros_like(x)
-        if (len(S.shape) == 3):
-            dynamics = ((np.matmul(S, np.atleast_3d(dH))
-                        - np.matmul(R,np.atleast_3d(dV))).reshape(x.shape)
-                        + self.external_forces(x, t))
+        if len(S.shape) == 3:
+            dynamics = (
+                np.matmul(S, np.atleast_3d(dH)) - np.matmul(R, np.atleast_3d(dV))
+            ).reshape(x.shape) + self.external_forces(x, t)
         else:
-            dynamics = dH@(S.T) - dV@R + self.external_forces(x, t)
+            dynamics = dH @ (S.T) - dV @ R + self.external_forces(x, t)
         if u is not None:
             dynamics += u
         return dynamics
-    
+
     def x_dot_jacobian(self, x, t, u=None):
         """
         Computes the Jacobian of the right hand side of the pseudo-
@@ -236,10 +250,10 @@ class ConservativeDissipativeSystem():
         jacobian = np.zeros_like(S)
         if self.H is not None:
             ddH = self.ddH(x)
-            jacobian += np.matmul(S,ddH)
+            jacobian += np.matmul(S, ddH)
         if self.V is not None:
             ddV = self.ddV(x)
-            jacobian -= np.matmul(R,ddV)
+            jacobian -= np.matmul(R, ddV)
         if self.external_forces_jacobian is not None:
             jacobian += self.external_forces_jacobian(x, t)
         return jacobian
@@ -276,24 +290,27 @@ class ConservativeDissipativeSystem():
 
         if self.lhs_matrix_provided:
             lhs_matrix_inv = np.linalg.inv(self.lhs_matrix)
-            x_dot = lambda t, x: np.matmul(lhs_matrix_inv,
-                                           self.x_dot(x.reshape(1, x.shape[-1]),
-                                           np.array(t).reshape((1, 1))).T).T
+            x_dot = lambda t, x: np.matmul(
+                lhs_matrix_inv,
+                self.x_dot(x.reshape(1, x.shape[-1]), np.array(t).reshape((1, 1))).T,
+            ).T
         else:
-            x_dot = lambda t, x: self.x_dot(x.reshape(1, x.shape[-1]),
-                                            np.array(t).reshape((1, 1)))
-        out_ivp = solve_ivp(fun=x_dot, t_span=(t[0], t[-1]), y0=x0,
-                            t_eval=t, rtol=1e-10)
-        x, t = out_ivp['y'].T, out_ivp['t'].T
+            x_dot = lambda t, x: self.x_dot(
+                x.reshape(1, x.shape[-1]), np.array(t).reshape((1, 1))
+            )
+        out_ivp = solve_ivp(
+            fun=x_dot, t_span=(t[0], t[-1]), y0=x0, t_eval=t, rtol=1e-10
+        )
+        x, t = out_ivp["y"].T, out_ivp["t"].T
         dxdt = self.x_dot(x, t)
         us = None
 
         # Add noise:
-        x += self.rng.normal(size=x.shape)*noise_std
-        dxdt += self.rng.normal(size=dxdt.shape)*noise_std
+        x += self.rng.normal(size=x.shape) * noise_std
+        dxdt += self.rng.normal(size=dxdt.shape) * noise_std
 
         return x, dxdt, t, us
-    
+
     def sample_trajectory_midpoint(self, t, x0=None, noise_std=0, reference=None):
         """
         Samples a trajectory of the system at times *t*, found by using the
@@ -332,20 +349,23 @@ class ConservativeDissipativeSystem():
 
         M = x0.shape[-1]
         if self.lhs_matrix_provided:
-            lhs_matrix_inv = np.linalg.inv(self.lhs_matrix)
-            f = lambda u, t: np.linalg.solve(self.lhs_matrix, self.x_dot(u,t))
-            Df = lambda u, t: np.linalg.solve(self.lhs_matrix, self.x_dot_jacobian(u,t))
+            f = lambda u, t: np.linalg.solve(self.lhs_matrix, self.x_dot(u, t))
+            Df = lambda u, t: np.linalg.solve(
+                self.lhs_matrix, self.x_dot_jacobian(u, t)
+            )
         else:
-            f = lambda u, t: self.x_dot(u,t)
-            Df = lambda u, t: self.x_dot_jacobian(u,t)
+            f = lambda u, t: self.x_dot(u, t)
+            Df = lambda u, t: self.x_dot_jacobian(u, t)
         for i, t_step in enumerate(t[:-1]):
             dt = t[i + 1] - t[i]
-            dxdt[i, :] = f(x[i,:], t[i])
-            x[i+1,:] = midpoint_method(x[i,:],x[i,:],t[i],f,Df,dt,M,1e-12,5)
+            dxdt[i, :] = f(x[i, :], t[i])
+            x[i + 1, :] = midpoint_method(
+                x[i, :], x[i, :], t[i], f, Df, dt, M, 1e-12, 5
+            )
 
         # Add noise:
-        x += self.rng.normal(size=x.shape)*noise_std
-        dxdt += self.rng.normal(size=dxdt.shape)*noise_std
+        x += self.rng.normal(size=x.shape) * noise_std
+        dxdt += self.rng.normal(size=dxdt.shape) * noise_std
 
         return x, dxdt, t, us
 
@@ -356,7 +376,7 @@ class ConservativeDissipativeSystem():
     def _dV(self, x):
         V = lambda x: self.V(x).sum()
         return autograd.grad(V)(x)
-    
+
     def _ddH(self, x):
         H = lambda x: self.H(x).sum()
         return autograd.hessian(H)(x)
@@ -364,7 +384,7 @@ class ConservativeDissipativeSystem():
     def _ddV(self, x):
         H = lambda x: self.H(x).sum()
         return autograd.hessian(H)(x)
-    
+
     def _jacforce(self, x, t):
         external_forces_x = lambda x: self.external_forces(x, t)
         return autograd.jacobian(external_forces_x)(x)
@@ -373,7 +393,7 @@ class ConservativeDissipativeSystem():
         if rng is None:
             assert self.rng is not None
             rng = self.rng
-        return rng.uniform(low=-1., high=1.0, size=self.nstates)
+        return rng.uniform(low=-1.0, high=1.0, size=self.nstates)
 
 
 def zero_force(x, t=None):

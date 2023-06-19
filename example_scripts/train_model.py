@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import torch
 
-from phlearn.phsystems import init_tanksystem, init_msdsystem
+from phlearn.phsystems.ode import init_tanksystem, init_msdsystem
 from phlearn.phnns import PseudoHamiltonianNN, DynamicSystemNN, load_dynamic_system_model
 from phlearn.phnns import R_estimator, BaselineNN, BaselineSplitNN, HamiltonianNN, ExternalForcesNN
 from phlearn.phnns import npoints_to_ntrajectories_tsample, train, generate_dataset
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
             model = PseudoHamiltonianNN(
                 nstates,
-                pH_system.structure_matrix,
+                pH_system.skewsymmetric_matrix,
                 hamiltonian_est=hamiltonian_nn,
                 dissipation_est=r_est,
                 external_forces_est=ext_forces_nn)

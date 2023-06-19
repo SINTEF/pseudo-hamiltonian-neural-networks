@@ -8,13 +8,13 @@ def read(fname):
 
 setuptools.setup(
     name='phlearn',
-    version='1.1.1',
+    version='1.1.2',
     author='Sølve Eidnes',
     author_email='solve.eidnes@sintef.no',
     description=('A package for simulating and learning pseudo-Hamiltonian systems.'
-                 ' For further details, see https://arxiv.org/pdf/2206.02660.pdf'),
+                 ' For further details, see https://arxiv.org/pdf/2206.02660.pdf and https://arxiv.org/abs/2304.14374'),
     keywords='pseudo-Hamiltonian neural networks',
-    url="https://gitlab.sintef.no/hybrid-machine-learning/pseudo-Hamiltonian-neural-networks",
+    url="https://github.com/SINTEF/pseudo-hamiltonian-neural-networks",
     packages=setuptools.find_packages(),
     long_description=read('README.md'),
     classifiers=[
