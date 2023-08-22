@@ -1,8 +1,6 @@
 import numpy as np
 from .phcontroller import PseudoHamiltonianController
 
-__all__ = ['PIDController']
-
 
 class PIDController(PseudoHamiltonianController):
     """

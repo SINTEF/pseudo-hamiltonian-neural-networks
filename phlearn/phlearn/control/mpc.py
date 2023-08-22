@@ -12,9 +12,6 @@ except ModuleNotFoundError:
     raise ModuleNotFoundError("To use the phlearn.control module install via 'pip install phlearn[control]' ")
 
 
-__all__ = ['PseudoHamiltonianMPC']
-
-
 class PseudoHamiltonianMPC(PseudoHamiltonianController):
     """
     This class implements a model predictive controller (MPC) that
