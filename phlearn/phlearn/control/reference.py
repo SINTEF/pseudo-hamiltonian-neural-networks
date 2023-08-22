@@ -1,8 +1,5 @@
 import numpy as np
 
-__all__ = ['Reference', 'ConstantReference', 'StepReference',
-           'PoissonStepReference', 'FixedReference']
-
 
 class Reference:
     def __init__(self, seed=None):
