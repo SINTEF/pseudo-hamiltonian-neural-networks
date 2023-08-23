@@ -6,6 +6,8 @@ import numpy as np
 
 from .pseudo_hamiltonian_system import PseudoHamiltonianSystem
 
+__all__ = ['TankSystem', 'init_tanksystem',
+           'init_tanksystem_leaky']
 
 class TankSystem(PseudoHamiltonianSystem):
     """

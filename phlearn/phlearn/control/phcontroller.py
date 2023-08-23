@@ -2,6 +2,7 @@
 import torch
 import numpy as np
 
+__all__ = ['PseudoHamiltonianController']
 
 class PseudoHamiltonianController:
     """

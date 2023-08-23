@@ -39,10 +39,25 @@ Functions present in phlearn.phsystems.pde
 
 """
 
+from . import pseudo_hamiltonian_pde_system
 from .pseudo_hamiltonian_pde_system import *
+from . import kdv_system
 from .kdv_system import *
+from . import bbm_system
 from .bbm_system import *
+from . import perona_malik_system
 from .perona_malik_system import *
+from . import heat_system
 from .heat_system import *
+from . import allen_cahn_system
 from .allen_cahn_system import *
+from . import cahn_hilliard_system
 from .cahn_hilliard_system import *
+
+__all__ = pseudo_hamiltonian_pde_system.__all__.copy()
+__all__ += kdv_system.__all__.copy()
+__all__ += bbm_system.__all__.copy()
+__all__ += perona_malik_system.__all__.copy()
+__all__ += heat_system.__all__.copy()
+__all__ += allen_cahn_system.__all__.copy()
+__all__ += cahn_hilliard_system.__all__.copy()

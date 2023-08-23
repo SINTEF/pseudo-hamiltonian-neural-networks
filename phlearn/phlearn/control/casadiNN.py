@@ -4,7 +4,7 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError("To use the phlearn.control module install via 'pip install phlearn[control]' ")
 
-
+__all__ = ['CasadiFCNN']
 
 class CasadiFCNN:
     """

@@ -27,6 +27,13 @@ Functions present in phlearn.phsystems.ode
 
 """
 
+from . import pseudo_hamiltonian_system
 from .pseudo_hamiltonian_system import *
+from . import tank_system
 from .tank_system import *
+from . import msd_system
 from .msd_system import *
+
+__all__ = pseudo_hamiltonian_system.__all__.copy()
+__all__ += tank_system.__all__.copy()
+__all__ += msd_system.__all__.copy()

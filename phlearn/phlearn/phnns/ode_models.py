@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+__all__ = ['BaseNN', 'BaselineNN', 'BaselineSplitNN', 'HamiltonianNN',
+           'ExternalForcesNN', 'R_NN', 'R_estimator']
 
 class BaseNN(torch.nn.Module):
     """

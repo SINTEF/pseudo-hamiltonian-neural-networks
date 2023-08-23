@@ -1,6 +1,7 @@
 
 import numpy as np
 
+__all__ = ['time_derivative']
 
 def time_derivative(integrator, x_dot, x_start, x_end,
                     t_start, t_end, dt, u=None, xspatial=None):

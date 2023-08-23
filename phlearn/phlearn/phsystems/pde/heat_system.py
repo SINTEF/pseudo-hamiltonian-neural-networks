@@ -3,6 +3,7 @@ from scipy.sparse import spdiags
 
 from .pseudo_hamiltonian_pde_system import PseudoHamiltonianPDESystem
 
+__all__ = ['HeatEquationSystem', 'initial_condition_heat']
 
 class HeatEquationSystem(PseudoHamiltonianPDESystem):
     """
