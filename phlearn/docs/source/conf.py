@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'phlearn'
 copyright = '2022, Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander Stasik'
 author = 'Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander Stasik'
-release = '0.2.0'
+release = '1.1.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -42,12 +42,3 @@ html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
-
-autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'private-members': True,
-    'special-members': '__init__',
-    'imported-members': True,
-    'show-inheritance': True,
-}
