@@ -11,5 +11,10 @@ Functions present in phlearn.utils
 
 """
 
+from . import derivatives
 from .derivatives import *
+from . import utils
 from .utils import *
+
+__all__ = derivatives.__all__.copy()
+__all__ += utils.__all__.copy()

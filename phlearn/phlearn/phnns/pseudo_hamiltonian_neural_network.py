@@ -5,6 +5,7 @@ from .dynamic_system_neural_network import DynamicSystemNN
 from .ode_models import HamiltonianNN, ExternalForcesNN, R_NN, R_estimator
 from ..utils.utils import to_tensor
 
+__all__ = ['PseudoHamiltonianNN', 'load_phnn_model', 'store_phnn_model']
 
 class PseudoHamiltonianNN(DynamicSystemNN):
     """

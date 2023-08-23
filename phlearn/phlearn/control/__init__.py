@@ -29,3 +29,7 @@ from . import pid
 from .pid import *
 from . import mpc
 from .mpc import *
+
+__all__ = reference.__all__.copy()
+__all__ += mpc.__all__.copy()
+__all__ += pid.__all__.copy()

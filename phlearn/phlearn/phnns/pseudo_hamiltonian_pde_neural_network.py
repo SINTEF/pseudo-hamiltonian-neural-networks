@@ -7,6 +7,7 @@ from .dynamic_system_neural_network import DynamicSystemNN
 from .pde_models import PDEIntegralNN, A_estimator, S_estimator
 from ..utils.utils import to_tensor
 
+__all__ = ['PseudoHamiltonianPDENN']
 
 class PseudoHamiltonianPDENN(DynamicSystemNN):
     """

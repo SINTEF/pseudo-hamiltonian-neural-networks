@@ -3,6 +3,8 @@ from scipy.sparse import spdiags
 
 from .pseudo_hamiltonian_pde_system import PseudoHamiltonianPDESystem
 
+__all__ = ['CahnHilliardSystem', 'initial_condition_ch']
+
 class CahnHilliardSystem(PseudoHamiltonianPDESystem):
     """
     Implements a discretization of the Cahn-Hilliard equation  with an
