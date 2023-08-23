@@ -42,3 +42,12 @@ html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'private-members': True,
+    'special-members': '__init__',
+    'imported-members': True,
+    'show-inheritance': True,
+}
