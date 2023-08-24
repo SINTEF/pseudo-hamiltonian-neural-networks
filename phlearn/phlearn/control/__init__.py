@@ -29,7 +29,15 @@ from . import pid
 from .pid import *
 from . import mpc
 from .mpc import *
+from . import phcontroller
+from .phcontroller import *
+from . import casadiNN
+from .casadiNN import *
+from . import casadiPH
+from .casadiPH import *
 
-__all__ = reference.__all__.copy()
-__all__ += mpc.__all__.copy()
+__all__ = mpc.__all__.copy()
 __all__ += pid.__all__.copy()
+__all__ += phcontroller.__all__.copy()
+__all__ += casadiNN.__all__.copy()
+__all__ += casadiPH.__all__.copy()
