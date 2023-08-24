@@ -7,13 +7,12 @@ sys.path.insert(0, os.path.abspath('../..'))
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-#
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'phlearn'
-copyright = '2022, Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander Stasik'
-author = 'Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander Stasik'
+copyright = '2022, Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander J. Stasik'
+author = 'Camilla Sterud, Sølve Eidnes, Eivind Bøhn, Signe Riemer-Sørensen, Alexander J. Stasik'
 release = '1.1.2'
 
 # -- General configuration ---------------------------------------------------

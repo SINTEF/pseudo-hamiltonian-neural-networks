@@ -8,13 +8,13 @@ __all__ = ['AllenCahnSystem', 'initial_condition_ac']
 class AllenCahnSystem(PseudoHamiltonianPDESystem):
     """
     Implements a discretization of the Allen-Cahn equation with an
-    optional external force, as described by
+    optional external force, as described by::
 
-    u_t - u_xx - u + u^3 = f(u,t,x)
+        u_t - u_xx - u + u^3 = f(u,t,x)
 
-    on the pseudo-Hamiltonian formulation
+    on the pseudo-Hamiltonian formulation::
 
-    du/dt = -grad[V(u)] + F(u,t,x)
+        du/dt = -grad[V(u)] + F(u,t,x)
 
     where u is a vector of the system states at the spatial points given by
     x, and t is time.
