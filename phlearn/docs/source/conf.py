@@ -18,7 +18,6 @@ release = '1.1.2'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-
 extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
