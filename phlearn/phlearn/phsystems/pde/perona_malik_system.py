@@ -8,13 +8,13 @@ __all__ = ['PeronaMalikSystem', 'initial_condition_pm']
 class PeronaMalikSystem(PseudoHamiltonianPDESystem):
     """
     Implements a discretization of the Perona-Malik equation with an
-    optional external force,
+    optional external force::
 
-    u_t + (u_x/(1+u_x^2))_x = f(u,t,x),
+        u_t + (u_x/(1+u_x^2))_x = f(u,t,x),
 
-    on the pseudo-Hamiltonian formulation
+    on the pseudo-Hamiltonian formulation::
 
-    du/dt = -grad[V(u)] + F(u,t,x)
+        du/dt = -grad[V(u)] + F(u,t,x)
 
     where u is a vector of the system states at the spatial points given by
     x, and t is time.

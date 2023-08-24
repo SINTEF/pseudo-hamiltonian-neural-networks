@@ -11,13 +11,13 @@ class BBMSystem(PseudoHamiltonianPDESystem):
     (BBM) equation.
 
     Implements a discretization of the BBM equation with an optional
-    viscosity term and external forces:
+    viscosity term and external forces::
 
-    u_t - u_xxt + u_x + u u_x - nu u_xx = f(u,x,t)
+        u_t - u_xxt + u_x + u u_x - nu u_xx = f(u,x,t)
 
-    on the pseudo-Hamiltonian formulation
+    on the pseudo-Hamiltonian formulation::
 
-    (1-d^2/dx^2)(du/dt) = d/dx(grad[H(u)]) - grad[V(u)] + F(u, t, x)
+        (1-d^2/dx^2)(du/dt) = d/dx(grad[H(u)]) - grad[V(u)] + F(u, t, x)
 
     where u is a vector of the system states at the spatial points given by
     x, and t is time.

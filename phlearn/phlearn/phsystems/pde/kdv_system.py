@@ -8,13 +8,13 @@ __all__ = ['KdVSystem', 'initial_condition_kdv']
 class KdVSystem(PseudoHamiltonianPDESystem):
     """
     Implements the a discretization of the KdV-Burgers equation with an
-    optional external force,
+    optional external force::
 
-    u_t + eta u u_x - nu u_xx - gamma^2 u_xxx = f(u,x,t)
+        u_t + eta u u_x - nu u_xx - gamma^2 u_xxx = f(u,x,t)
 
-    on the pseudo-Hamiltonian formulation
+    on the pseudo-Hamiltonian formulation::
 
-    du/dt = d/dx(grad[H(u)]) - grad[V(u)] + F(u, t, x)
+        u/dt = d/dx(grad[H(u)]) - grad[V(u)] + F(u, t, x)
 
     where u is a vector of the system states at the spatial points given by
     x, and t is time.

@@ -8,13 +8,13 @@ __all__ = ['CahnHilliardSystem', 'initial_condition_ch']
 class CahnHilliardSystem(PseudoHamiltonianPDESystem):
     """
     Implements a discretization of the Cahn-Hilliard equation  with an
-    optional external force, as described by
+    optional external force, as described by::
 
-    u_t - (nu u + alpha u^3 + mu u_xx)_xx = f(u,t,x)
+        u_t - (nu u + alpha u^3 + mu u_xx)_xx = f(u,t,x)
 
-    on the pseudo-Hamiltonian formulation
+    on the pseudo-Hamiltonian formulation::
 
-    du/dt = d^2/dx^2 grad[V(u)] + F(u,t,x)
+        du/dt = d^2/dx^2 grad[V(u)] + F(u,t,x)
 
     where u is a vector of the system states at the spatial points given by
     x, and t is time.

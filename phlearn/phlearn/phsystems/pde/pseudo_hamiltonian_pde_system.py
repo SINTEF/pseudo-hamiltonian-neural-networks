@@ -9,7 +9,7 @@ __all__ = ['PseudoHamiltonianPDESystem', 'zero_force']
 
 class PseudoHamiltonianPDESystem:
     """
-    Implements a spatially discretized pseudo-Hamiltonian PDE system of the form:
+    Implements a spatially discretized pseudo-Hamiltonian PDE system of the form::
 
         dx/dt = S*grad[H(x)] - R*grad[V(x)] + F(x, t, xspatial)
 
