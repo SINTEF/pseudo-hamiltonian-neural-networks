@@ -1,7 +1,7 @@
-phlearn.phsystems
+phlearn.phsystems.ode
 --------------------------
 
-.. automodule:: phlearn.phsystems
+.. automodule:: phlearn.phsystems.ode
    :members:
    :undoc-members:
    :show-inheritance:
